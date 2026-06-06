@@ -1,0 +1,4579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Stroke Navigator — Inpatient Decision Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=JetBrains+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f1ea;
+    --bg-card: #fbf9f3;
+    --bg-elev: #ffffff;
+    --ink: #1a1814;
+    --ink-soft: #4a463e;
+    --ink-faint: #8a8478;
+    --rule: #d8d2c3;
+    --rule-soft: #e8e3d4;
+    --accent: #8b1a1a;        /* clinical maroon */
+    --accent-soft: #c95a4a;
+    --accent-bg: #f6e4df;
+    --gold: #a87c1f;
+    --teal: #2d5d6b;
+    --green: #2f5e3a;
+    --warn-bg: #f9ecd1;
+    --warn-ink: #6b4a0e;
+    --danger-bg: #f4dcd6;
+    --danger-ink: #7a1a10;
+
+    --serif: 'Fraunces', 'Times New Roman', serif;
+    --sans: 'Inter Tight', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: var(--sans); }
+  body {
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(26,24,20,0.06) 1px, transparent 0);
+    background-size: 28px 28px;
+    line-height: 1.5;
+  }
+
+  /* ---------- HEADER ---------- */
+  .header {
+    border-bottom: 1px solid var(--rule);
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(8px);
+  }
+  .header-inner {
+    max-width: 1280px; margin: 0 auto;
+    padding: 20px 32px;
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 24px; flex-wrap: wrap;
+  }
+  .brand {
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  .brand-mark {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 30px;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    font-style: italic;
+  }
+  .brand-mark span { color: var(--accent); font-style: normal; }
+  .brand-tag {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    border-left: 1px solid var(--rule);
+    padding-left: 14px;
+  }
+  @media (max-width: 640px) {
+    .brand { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .brand-tag { border-left: none; padding-left: 0; }
+  }
+  .header-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  .header-meta strong { color: var(--accent); font-weight: 600; }
+
+  /* ---------- LAYOUT ---------- */
+  .page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 40px 32px 80px;
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 40px;
+  }
+  @media (max-width: 980px) {
+    .page { grid-template-columns: 1fr; padding: 24px 18px 60px; }
+    .sidebar { position: static !important; }
+  }
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar {
+    position: sticky; top: 100px;
+    align-self: start;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    padding-right: 8px;
+  }
+  .sidebar::-webkit-scrollbar { width: 6px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 22px 22px 20px;
+    margin-bottom: 20px;
+  }
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .panel-title::before {
+    content: ''; width: 14px; height: 1px; background: var(--accent);
+  }
+
+  .check-row { display: flex; flex-direction: column; gap: 8px; }
+  .check {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    background: var(--bg-elev);
+    cursor: pointer;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .check:hover { border-color: var(--ink-faint); color: var(--ink); }
+  .check input { display: none; }
+  .check .box {
+    width: 14px; height: 14px;
+    border: 1.5px solid var(--ink-faint);
+    border-radius: 2px;
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.15s ease;
+  }
+  .check input:checked ~ .box {
+    background: var(--accent); border-color: var(--accent);
+  }
+  .check input:checked ~ .box::after {
+    content: '✓'; position: absolute; inset: 0;
+    color: white; font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .check input:checked ~ .label { color: var(--ink); font-weight: 500; }
+
+  /* ---------- ACUTE TX SELECTOR (radio pills) ---------- */
+  .pill-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .pill {
+    display: flex; align-items: center; justify-content: center;
+    padding: 9px 8px;
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    background: var(--bg-elev);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    transition: all 0.15s ease;
+    user-select: none;
+    text-align: center;
+  }
+  .pill:hover { border-color: var(--ink-faint); color: var(--ink); }
+  .pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    font-weight: 600;
+  }
+
+  /* ---------- ACUTE TX BANNER (shown in terminal node) ---------- */
+  details.acute-banner {
+    background: linear-gradient(180deg, #fef9ed 0%, #fbf3df 100%);
+    border: 1px solid #e5cf94;
+    border-left: 4px solid var(--gold);
+    border-radius: 4px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  details.acute-banner > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 11px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    user-select: none;
+    transition: background 0.15s ease;
+  }
+  details.acute-banner > summary::-webkit-details-marker { display: none; }
+  details.acute-banner > summary::marker { display: none; content: ''; }
+  details.acute-banner > summary:hover {
+    background: rgba(180, 140, 50, 0.06);
+  }
+  .acute-banner-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px;
+    background: var(--gold);
+    color: white;
+    border-radius: 50%;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .acute-banner-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .acute-banner-label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--warn-ink);
+    font-weight: 600;
+  }
+  .acute-banner-title {
+    font-family: var(--serif);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+    line-height: 1.25;
+  }
+  .acute-banner-toggle {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--warn-ink);
+    padding: 4px 8px;
+    border: 1px solid #e5cf94;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.5);
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all 0.15s ease;
+  }
+  .acute-banner-chevron {
+    display: inline-block;
+    transition: transform 0.2s ease;
+    font-size: 8px;
+  }
+  details[open].acute-banner .acute-banner-chevron {
+    transform: rotate(180deg);
+  }
+  details[open].acute-banner .acute-banner-toggle-text-closed { display: none; }
+  details:not([open]).acute-banner .acute-banner-toggle-text-open { display: none; }
+
+  details.acute-banner > ul {
+    list-style: none;
+    margin: 0;
+    padding: 10px 16px 14px 48px;
+    border-top: 1px dashed #e5cf94;
+  }
+  details.acute-banner > ul > li {
+    font-size: 12.5px;
+    color: var(--ink);
+    padding: 3px 0;
+    line-height: 1.45;
+    display: flex;
+    gap: 8px;
+  }
+  details.acute-banner > ul > li::before {
+    content: '▸';
+    color: var(--gold);
+    flex-shrink: 0;
+    font-size: 10px;
+    margin-top: 3px;
+  }
+  details.acute-banner > ul > li strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- NIHSS + AGE INPUTS ---------- */
+  .dual-input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .num-input-wrap { display: flex; flex-direction: column; gap: 5px; }
+  .num-input-label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-faint);
+  }
+  .num-input-wrap input {
+    padding: 9px 10px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--bg-elev);
+    font-family: var(--mono);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ink);
+    text-align: center;
+    width: 100%;
+    -moz-appearance: textfield;
+  }
+  .num-input-wrap input::-webkit-outer-spin-button,
+  .num-input-wrap input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .num-input-wrap input:focus { outline: none; border-color: var(--accent); }
+  .nihss-band {
+    width: 100%;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+    text-align: left;
+    line-height: 1.2;
+    flex-wrap: wrap;
+  }
+  .nihss-band.minor    { background: #e8f0e2; color: #2f5e3a; border-color: #b8d2a4; }
+  .nihss-band.moderate { background: #fdf3d7; color: #6b4a0e; border-color: #e5cf94; }
+  .nihss-band.mod-sev  { background: #f9d9c2; color: #934417; border-color: #e3a578; }
+  .nihss-band.severe   { background: #f4dcd6; color: #7a1a10; border-color: #d8a298; }
+  .nihss-hint {
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    line-height: 1.45;
+  }
+
+  /* ---------- CALCULATOR LIST ---------- */
+  .calc-list { display: flex; flex-direction: column; gap: 6px; }
+  .calc-btn {
+    text-align: left;
+    padding: 10px 12px;
+    background: var(--bg-elev);
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-soft);
+    transition: all 0.15s ease;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+  }
+  .calc-btn:hover { border-color: var(--accent); color: var(--ink); }
+  .calc-btn .calc-name { font-weight: 500; }
+  .calc-btn .calc-arrow { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  .calc-btn:hover .calc-arrow { color: var(--accent); }
+
+  /* ---------- MODAL ---------- */
+  .modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(26, 24, 20, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: none;
+    align-items: flex-start; justify-content: center;
+    padding: 60px 20px 40px;
+    overflow-y: auto;
+  }
+  .modal-backdrop.open { display: flex; animation: fadeIn 0.2s ease; }
+  .modal {
+    background: var(--bg-card);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    max-width: 640px;
+    width: 100%;
+    box-shadow: 0 24px 64px rgba(26, 24, 20, 0.25);
+    overflow: hidden;
+    animation: fadeIn 0.25s ease both;
+  }
+  .modal-head {
+    padding: 22px 26px 16px;
+    border-bottom: 1px solid var(--rule);
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+  }
+  .modal-eyebrow {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .modal-title {
+    font-family: var(--serif);
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    line-height: 1.15;
+  }
+  .modal-sub {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .modal-close {
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    width: 32px; height: 32px;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--ink-soft);
+    flex-shrink: 0;
+    line-height: 1;
+    transition: all 0.15s ease;
+  }
+  .modal-close:hover { border-color: var(--accent); color: var(--accent); }
+  .modal-body { padding: 22px 26px; }
+
+  .calc-q {
+    display: flex; flex-direction: column;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--rule-soft);
+    gap: 10px;
+  }
+  .calc-q:last-of-type { border-bottom: none; }
+  .calc-q-label {
+    font-size: 14px;
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .calc-q-help {
+    font-size: 12.5px;
+    color: var(--ink-faint);
+    margin-top: -4px;
+    line-height: 1.5;
+  }
+  .calc-q-options { display: flex; flex-wrap: wrap; gap: 6px; }
+  .calc-opt {
+    padding: 8px 14px;
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .calc-opt:hover { border-color: var(--ink-faint); color: var(--ink); }
+  .calc-opt.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    font-weight: 600;
+  }
+
+  .calc-result {
+    margin-top: 18px;
+    padding: 18px 22px;
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+    border-radius: 4px;
+  }
+  .calc-result-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    margin-bottom: 6px;
+  }
+  .calc-result-score {
+    font-family: var(--serif);
+    font-size: 32px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .calc-result-score em { color: var(--accent); font-style: italic; font-size: 22px; margin-left: 8px; }
+  .calc-result-interp {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+  }
+  .calc-result-interp strong { color: var(--ink); font-weight: 600; }
+
+  .calc-continue-btn {
+    display: inline-flex; align-items: center;
+    margin-top: 14px;
+    padding: 10px 20px;
+    background: var(--ink);
+    border: 1px solid var(--ink);
+    border-radius: 3px;
+    color: var(--bg);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    transition: all 0.15s ease;
+  }
+  .calc-continue-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+
+  .reset-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ---------- MAIN ---------- */
+  .main { min-width: 0; }
+
+  .hero {
+    padding: 0 0 36px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 36px;
+  }
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+    margin-bottom: 18px;
+  }
+  .hero-title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(36px, 5vw, 56px);
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin-bottom: 16px;
+  }
+  .hero-title em { font-style: italic; color: var(--accent); font-weight: 400; }
+  .hero-sub {
+    font-size: 15.5px;
+    color: var(--ink-soft);
+    max-width: 620px;
+    line-height: 1.55;
+  }
+
+  /* ---------- CRUMBS ---------- */
+  .crumbs {
+    display: flex; flex-wrap: wrap; gap: 0;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-faint);
+    margin-bottom: 28px;
+    min-height: 16px;
+  }
+  .crumb {
+    cursor: pointer;
+    transition: color 0.15s;
+  }
+  .crumb:hover { color: var(--accent); }
+  .crumb-sep { margin: 0 10px; color: var(--rule); }
+  .crumb.current { color: var(--ink); }
+
+  /* ---------- NODE / QUESTION ---------- */
+  .node {
+    animation: fadeIn 0.35s ease both;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .q-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    margin-bottom: 10px;
+  }
+  .q-title {
+    font-family: var(--serif);
+    font-size: clamp(26px, 3vw, 34px);
+    font-weight: 500;
+    line-height: 1.18;
+    letter-spacing: -0.015em;
+    margin-bottom: 8px;
+  }
+  .q-help {
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin-bottom: 28px;
+    max-width: 660px;
+  }
+
+  .options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 600px) { .options { grid-template-columns: 1fr; } }
+
+  .option {
+    display: block; width: 100%; text-align: left;
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 13px 16px;
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: all 0.15s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .option::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 0.2s ease;
+  }
+  .option:hover {
+    border-color: var(--ink);
+    transform: translateX(2px);
+  }
+  .option:hover::before { transform: scaleY(1); }
+
+  .option-head {
+    display: flex; align-items: baseline; gap: 10px;
+    margin-bottom: 3px;
+  }
+  .option-num {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-faint);
+    letter-spacing: 0.1em;
+    flex-shrink: 0;
+  }
+  .option-title {
+    font-family: var(--serif);
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .option-desc {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-left: 23px;
+    line-height: 1.45;
+  }
+
+  /* ---------- TERMINAL / TREATMENT ---------- */
+  .terminal {
+    animation: fadeIn 0.4s ease both;
+  }
+  .verdict {
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .verdict::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: var(--accent);
+  }
+  .verdict-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .verdict-title {
+    font-family: var(--serif);
+    font-size: clamp(18px, 2.2vw, 22px);
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    margin-bottom: 6px;
+  }
+  .verdict-summary {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    max-width: 720px;
+  }
+  .verdict-summary strong { color: var(--ink); font-weight: 600; }
+
+  .treatment {
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-soft);
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+  }
+  .treatment-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .treatment-rx {
+    font-family: var(--serif);
+    font-size: 16.5px;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .treatment-rx em { color: var(--accent); font-style: italic; }
+  .treatment-detail {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  /* ---------- TWO COL: NEXT STEPS + WATCH OUT ---------- */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  @media (min-width: 760px) {
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 14px 18px;
+  }
+  .card-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-faint);
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::before {
+    content: ''; width: 12px; height: 1px; background: var(--accent);
+  }
+  .card.warn .card-title::before { background: var(--gold); }
+  .card.warn { background: var(--warn-bg); border-color: #e5cf94; }
+  .card.warn .card-title { color: var(--warn-ink); }
+
+  .checklist { list-style: none; }
+  .checklist li {
+    padding: 5px 0;
+    border-bottom: 1px dashed var(--rule-soft);
+    font-size: 12.5px;
+    color: var(--ink);
+    line-height: 1.45;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist li::before {
+    content: '□';
+    font-family: var(--mono);
+    color: var(--ink-faint);
+    font-size: 12px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .card.warn .checklist li::before { content: '!'; color: var(--gold); font-weight: 700; }
+  .checklist li strong { color: var(--ink); font-weight: 600; }
+  .checklist li em { font-style: italic; color: var(--ink-soft); }
+
+  /* ---------- PROFILE FLAGS ---------- */
+  .flag-strip {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    margin-bottom: 18px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+  }
+  .flag-strip-label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-faint);
+    margin-right: 4px;
+    align-self: center;
+  }
+  .flag {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 8px;
+    background: var(--ink);
+    color: var(--bg);
+    border-radius: 2px;
+  }
+
+  /* ---------- PROFILE-DRIVEN NOTES ---------- */
+  .pmh-note {
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--teal);
+    border-radius: 3px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .pmh-note strong { color: var(--teal); font-weight: 600; }
+
+  /* ---------- TRIAL CARDS ---------- */
+  .trials {
+    margin-bottom: 20px;
+  }
+  .trials-header {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-faint);
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .trials-header::before {
+    content: ''; width: 12px; height: 1px; background: var(--accent);
+  }
+  .trial {
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin-bottom: 8px;
+  }
+  .trial-top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .trial-top-right {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .trial-pubmed {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    text-decoration: none;
+    padding: 3px 8px;
+    border: 1px solid var(--accent-soft);
+    border-radius: 2px;
+    background: transparent;
+    transition: all 0.15s ease;
+  }
+  .trial-pubmed:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .trial-name {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .trial-year {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.05em;
+  }
+  .trial-tagline {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+    line-height: 1.45;
+  }
+  .trial-meta {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 4px 14px;
+    font-size: 12px;
+    color: var(--ink);
+    line-height: 1.45;
+  }
+  .trial-meta dt {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-faint);
+    padding-top: 2px;
+  }
+  .trial-meta dd { color: var(--ink-soft); }
+
+  /* ---------- AHA BADGE ---------- */
+  .aha-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    padding: 2px 6px;
+    background: var(--accent-bg);
+    border: 1px solid var(--accent-soft);
+    border-radius: 2px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  /* ---------- SECTION HEAD (within plan page) ---------- */
+  .section-head {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-soft);
+    margin: 22px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-head::before {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+  .section-head::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  /* ---------- BACK / RESTART BAR ---------- */
+  .actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+  }
+  .btn {
+    padding: 11px 18px;
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+  }
+  .btn.primary:hover { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* ---------- FOOTER ---------- */
+  .footer {
+    margin-top: 60px;
+    padding: 30px 0 0;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    line-height: 1.7;
+  }
+  .footer strong { color: var(--ink-soft); }
+
+  /* ============================================
+     NEW UI: VIEWS, HEADER NAV, HOME, WORKFLOW, RESOURCES
+     ============================================ */
+
+  /* --- Header nav buttons --- */
+  .header-nav {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .nav-btn {
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-soft);
+    transition: all 0.15s ease;
+  }
+  .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-btn-primary {
+    background: var(--ink);
+    color: var(--bg);
+    border-color: var(--ink);
+  }
+  .nav-btn-primary:hover { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* --- Views --- */
+  .view { width: 100%; }
+
+  /* --- HOME --- */
+  .view-home { padding: 0; }
+  .home-inner {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 36px 32px 60px;
+  }
+  @media (max-width: 720px) {
+    .home-inner { padding: 24px 20px 40px; }
+  }
+  .home-title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(56px, 11vw, 124px);
+    line-height: 0.92;
+    letter-spacing: -0.04em;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+  .home-title em { font-style: italic; color: var(--accent); font-weight: 400; }
+  .home-subheader {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.24em;
+    color: var(--accent);
+    margin-bottom: 26px;
+  }
+  .home-lede {
+    font-size: clamp(15px, 1.6vw, 17px);
+    color: var(--ink-soft);
+    max-width: 600px;
+    line-height: 1.55;
+    margin-bottom: 40px;
+  }
+
+  /* Pillar flow with arrows */
+  .home-flow {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom: 48px;
+  }
+  .pillar {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 16px 14px 14px;
+    position: relative;
+    min-width: 0;
+  }
+  .pillar-num {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--accent);
+    letter-spacing: 0.14em;
+    margin-bottom: 6px;
+  }
+  .pillar-title {
+    font-family: var(--serif);
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    color: var(--ink);
+    margin-bottom: 4px;
+    line-height: 1.15;
+  }
+  .pillar-body {
+    font-size: 12px;
+    color: var(--ink-soft);
+    line-height: 1.45;
+  }
+  .pillar-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--accent);
+    width: 40px;
+  }
+  .pillar-arrow svg {
+    width: 100%;
+    height: auto;
+    max-width: 36px;
+  }
+  @media (max-width: 720px) {
+    .home-flow { flex-direction: column; gap: 4px; }
+    .pillar-arrow { width: 100%; padding: 6px 0; }
+    .pillar-arrow svg { transform: rotate(90deg); }
+  }
+  .home-cta-row {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 60px;
+    flex-wrap: wrap;
+  }
+  .cta {
+    padding: 16px 28px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    transition: all 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .cta-primary {
+    background: var(--ink);
+    color: var(--bg);
+    border: 1px solid var(--ink);
+  }
+  .cta-primary:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    transform: translateX(2px);
+  }
+  .cta-primary:hover .cta-arrow { transform: translateX(4px); }
+  .cta-arrow {
+    transition: transform 0.18s ease;
+    font-family: var(--serif);
+  }
+  .cta-ghost {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+  }
+  .cta-ghost:hover { border-color: var(--ink); color: var(--ink); }
+  .home-meta {
+    margin-top: 40px;
+    padding-top: 28px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    line-height: 1.7;
+  }
+  .home-meta strong { color: var(--ink-soft); }
+
+  /* --- WORKFLOW --- */
+  .view-workflow {
+    padding: 0;
+  }
+  /* ---------- PATIENT STAGE LAYOUT ---------- */
+  /* Top row: On Presentation | Hyperacute therapy (side by side) */
+  .patient-top-grid {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 28px;
+    margin-bottom: 14px;
+    align-items: start;
+  }
+  @media (max-width: 760px) {
+    .patient-top-grid { grid-template-columns: 1fr; gap: 16px; margin-bottom: 12px; }
+  }
+
+  /* NIHSS severity band + hint — sits BELOW the top grid so it can never push the columns */
+  .nihss-band-block {
+    margin-bottom: 22px;
+  }
+  .nihss-band-block .nihss-band {
+    display: inline-flex;
+    width: auto;
+    max-width: 100%;
+    margin-bottom: 6px;
+  }
+  .nihss-band-block .nihss-hint {
+    display: block;
+    max-width: 660px;
+  }
+
+  /* Hyperacute group: align pill-row top edge + pill height with Age/NIHSS input boxes */
+  .hyperacute-group .form-pill-row {
+    padding-top: 22px;
+  }
+  .hyperacute-group .form-pill {
+    padding: 12px 10px;
+    font-size: 11.5px;
+  }
+  @media (max-width: 760px) {
+    /* When the top grid stacks, drop the extra top padding so it doesn't look like dead space */
+    .hyperacute-group .form-pill-row { padding-top: 0; }
+  }
+
+  /* Hyperacute pills as 2x2 (compact) */
+  .form-pill-row-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Comorbidities — full-width below; 3-col grid */
+  .comorbidities-section { margin-bottom: 4px; }
+  .pmh-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (max-width: 760px) {
+    .pmh-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 540px) {
+    .pmh-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Home medications — full-width row at bottom */
+  .home-meds-section {
+    margin-top: 4px;
+    padding-top: 18px;
+    border-top: 1px dashed var(--rule);
+  }
+  .meds-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (max-width: 760px) {
+    .meds-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 540px) {
+    .meds-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ============================================
+     WORKFLOW LAYOUT — fixed left rail
+     ============================================ */
+  .view-workflow {
+    position: relative;
+    min-height: calc(100vh - 73px);
+    padding: 0;
+    max-width: none;
+    margin: 0;
+  }
+
+  .progress-bar {
+    position: fixed;
+    top: 73px;
+    left: 0;
+    bottom: 0;
+    width: 220px;
+    background: var(--bg-card);
+    border-right: 1px solid var(--rule);
+    padding: 28px 18px;
+    overflow-y: auto;
+    z-index: 30;
+  }
+  .progress-label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    margin-bottom: 14px;
+    padding-left: 14px;
+  }
+  .progress-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .progress-step {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+  }
+  .progress-step:hover { border-color: var(--ink-faint); }
+  .progress-step.complete {
+    background: #e8f0e2;
+    border-color: #97c084;
+  }
+  .progress-step.complete .progress-step-num,
+  .progress-step.complete .progress-step-label {
+    color: #2f5e3a;
+    font-weight: 600;
+  }
+  .progress-step.current {
+    background: var(--ink);
+    border-color: var(--ink);
+  }
+  .progress-step.current .progress-step-num,
+  .progress-step.current .progress-step-label {
+    color: var(--bg);
+  }
+  .progress-step.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .progress-step-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+    min-width: 16px;
+    text-align: center;
+  }
+  .progress-step-label {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  /* Mobile: collapse rail back to a sticky horizontal bar at the top */
+  @media (max-width: 760px) {
+    .progress-bar {
+      position: sticky;
+      top: 73px;
+      left: auto;
+      bottom: auto;
+      width: 100%;
+      height: auto;
+      max-height: none;
+      border-right: none;
+      border-bottom: 1px solid var(--rule);
+      padding: 10px 14px;
+      z-index: 30;
+      background: var(--bg);
+      backdrop-filter: blur(8px);
+    }
+    .progress-label { display: none; }
+    .progress-inner {
+      flex-direction: row;
+      gap: 4px;
+      overflow-x: auto;
+    }
+    .progress-step {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 6px;
+      justify-content: center;
+    }
+    .progress-step-num { display: none; }
+    .progress-step-label { font-size: 9.5px; letter-spacing: 0.06em; }
+  }
+
+  .workflow-main {
+    margin-left: 220px;
+    margin-right: 260px;
+    padding: 28px 32px 60px;
+    min-width: 0;
+  }
+  .workflow-main > * {
+    max-width: 880px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  @media (max-width: 1340px) {
+    .workflow-main { margin-left: 170px; margin-right: 224px; padding: 24px 24px 50px; }
+  }
+  @media (max-width: 1080px) {
+    .workflow-main { margin-right: 0; }
+  }
+  @media (max-width: 760px) {
+    .workflow-main {
+      margin-left: 0;
+      padding: 20px 16px 40px;
+    }
+  }
+
+  /* Hide the inline flag-strip when the right context panel is visible */
+  .view-workflow .flag-strip {
+    display: none !important;
+  }
+  @media (max-width: 1080px) {
+    .view-workflow .flag-strip {
+      display: flex !important;
+      margin-bottom: 18px;
+      border-radius: 4px;
+      border: 1px solid var(--rule);
+      padding: 10px 14px;
+    }
+    /* But hide if empty (renderFlagStrip sets display:none) */
+    .view-workflow .flag-strip[style*="display: none"] {
+      display: none !important;
+    }
+  }
+
+  /* ============================================
+     CONTEXT PANEL (right rail, mirrors left progress)
+     ============================================ */
+  .context-panel {
+    position: fixed;
+    top: 73px;
+    right: 0;
+    bottom: 0;
+    width: 260px;
+    background: var(--bg-card);
+    border-left: 1px solid var(--rule);
+    padding: 28px 18px;
+    overflow-y: auto;
+    z-index: 30;
+  }
+  .ctx-label {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--ink-faint);
+    margin-bottom: 16px;
+    padding-left: 4px;
+  }
+  .ctx-section {
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .ctx-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+  .ctx-section-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    margin-bottom: 8px;
+    padding-left: 4px;
+  }
+  .ctx-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 3px;
+    margin-bottom: 3px;
+  }
+  .ctx-item:last-child { margin-bottom: 0; }
+  .ctx-item .ctx-key {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-faint);
+  }
+  .ctx-item .ctx-val {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .ctx-nihss.minor   { background: #e8f0e2; }
+  .ctx-nihss.moderate{ background: #fdf3d7; }
+  .ctx-nihss.mod-sev { background: #f9d9c2; }
+  .ctx-nihss.severe  { background: #f4dcd6; }
+  .ctx-nihss.minor   .ctx-val { color: #2f5e3a; }
+  .ctx-nihss.moderate.ctx-item .ctx-val { color: #6b4a0e; }
+  .ctx-nihss.mod-sev .ctx-val { color: #934417; }
+  .ctx-nihss.severe  .ctx-val { color: #7a1a10; }
+
+  .ctx-acute {
+    display: inline-block;
+    padding: 5px 10px;
+    background: var(--accent);
+    color: white;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    border-radius: 3px;
+  }
+
+  .ctx-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .ctx-chip {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 7px;
+    background: var(--ink);
+    color: var(--bg);
+    border-radius: 2px;
+    line-height: 1.3;
+  }
+  .ctx-chip.teal {
+    background: var(--teal);
+  }
+  .ctx-chip.slate {
+    background: #4a5a7a;
+  }
+
+  .ctx-score {
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--gold);
+    border-radius: 3px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+  }
+  .ctx-score:last-child { margin-bottom: 0; }
+  .ctx-score-name {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+    margin-bottom: 2px;
+  }
+  .ctx-score-value {
+    font-family: var(--serif);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+
+  .ctx-empty {
+    font-size: 12px;
+    color: var(--ink-faint);
+    line-height: 1.5;
+    padding: 14px;
+    text-align: center;
+    border: 1px dashed var(--rule);
+    border-radius: 3px;
+  }
+
+  /* Intermediate: shrink both rails to give main content more breathing room */
+  @media (max-width: 1340px) {
+    .progress-bar { width: 170px; padding: 24px 12px; }
+    .context-panel { width: 224px; padding: 24px 14px; }
+  }
+
+  @media (max-width: 1080px) {
+    .context-panel { display: none; }
+  }
+
+  /* --- Stage form layouts (compacted) --- */
+  .stage-head {
+    margin-bottom: 22px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .stage-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .stage-title {
+    font-family: var(--serif);
+    font-size: clamp(22px, 2.6vw, 30px);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  .stage-title em { font-style: italic; color: var(--accent); font-weight: 400; }
+  .stage-sub {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    max-width: 660px;
+    line-height: 1.5;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+  .form-group-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--ink-faint);
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .form-group-title::before {
+    content: ''; width: 12px; height: 1px; background: var(--accent);
+  }
+
+  .form-row-two {
+    display: grid;
+    grid-template-columns: 140px 140px;
+    gap: 14px;
+    margin-bottom: 10px;
+  }
+  @media (max-width: 600px) { .form-row-two { grid-template-columns: 1fr 1fr; } }
+
+  .form-big-input {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .form-big-input label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-faint);
+  }
+  .form-big-input input {
+    padding: 10px 14px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--bg-elev);
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+    text-align: center;
+    width: 100%;
+    -moz-appearance: textfield;
+  }
+  .form-big-input input::-webkit-outer-spin-button,
+  .form-big-input input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .form-big-input input:focus { outline: none; border-color: var(--accent); }
+
+  .form-pill-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  @media (max-width: 600px) { .form-pill-row { grid-template-columns: 1fr 1fr; } }
+  .form-pill {
+    display: flex; align-items: center; justify-content: center;
+    padding: 9px 8px;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--bg-elev);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    transition: all 0.15s ease;
+    user-select: none;
+    text-align: center;
+  }
+  .form-pill:hover { border-color: var(--ink-faint); color: var(--ink); }
+  .form-pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    font-weight: 600;
+  }
+
+  .form-check-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  @media (max-width: 900px) { .form-check-grid { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 540px) { .form-check-grid { grid-template-columns: 1fr; } }
+  .form-check {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    background: var(--bg-elev);
+    cursor: pointer;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .form-check:hover { border-color: var(--ink-faint); color: var(--ink); }
+  .form-check input { display: none; }
+  .form-check .box {
+    width: 13px; height: 13px;
+    border: 1.5px solid var(--ink-faint);
+    border-radius: 2px;
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.15s ease;
+  }
+  .form-check input:checked ~ .box {
+    background: var(--accent); border-color: var(--accent);
+  }
+  .form-check input:checked ~ .box::after {
+    content: '✓'; position: absolute; inset: 0;
+    color: white; font-size: 10px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; line-height: 1;
+  }
+  .form-check input:checked ~ .label { color: var(--ink); font-weight: 500; }
+  .form-check .label-hint { color: var(--ink-faint); font-size: 10.5px; margin-left: 3px; }
+
+  .stage-actions {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-top: 24px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+  }
+  .stage-actions .btn-back,
+  .stage-actions .btn-skip,
+  .stage-actions .btn-continue,
+  .stage-actions .btn-clear {
+    padding: 10px 16px;
+    border-radius: 3px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .stage-actions .btn-back,
+  .stage-actions .btn-skip,
+  .stage-actions .btn-clear {
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--ink-soft);
+  }
+  .stage-actions .btn-skip { margin-left: auto; }
+  .stage-actions .btn-back:hover,
+  .stage-actions .btn-skip:hover { border-color: var(--ink); color: var(--ink); }
+  .stage-actions .btn-clear:hover { color: var(--accent); border-color: var(--accent); }
+  .stage-actions .btn-continue {
+    background: var(--ink);
+    border: 1px solid var(--ink);
+    color: var(--bg);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .stage-actions .btn-continue:hover {
+    background: var(--accent); border-color: var(--accent); color: white;
+  }
+
+  /* --- Scoring stage --- */
+  .score-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 700px) { .score-grid { grid-template-columns: 1fr; } }
+  .score-card {
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+  }
+  .score-card:hover { border-color: var(--ink); transform: translateX(2px); }
+  .score-card-name {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--ink);
+    margin-bottom: 3px;
+    letter-spacing: -0.005em;
+  }
+  .score-card-eyebrow {
+    font-family: var(--mono);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .score-card-desc {
+    font-size: 12px;
+    color: var(--ink-soft);
+    line-height: 1.45;
+  }
+  .score-saved {
+    margin-top: 8px;
+    padding: 4px 8px;
+    background: var(--accent-bg);
+    border-radius: 2px;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    display: inline-block;
+  }
+
+  /* --- RESOURCES --- */
+  .view-resources { padding: 0; }
+  .resources-inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 50px 32px 80px;
+  }
+  @media (max-width: 760px) { .resources-inner { padding: 30px 16px 60px; } }
+  .resources-head { margin-bottom: 32px; }
+  .resources-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    color: var(--accent);
+    margin-bottom: 12px;
+  }
+  .resources-title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(38px, 5.5vw, 56px);
+    line-height: 1;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+  }
+
+  .resource-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .resource-tab {
+    padding: 14px 22px;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-faint);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    margin-bottom: -1px;
+  }
+  .resource-tab:hover { color: var(--ink-soft); }
+  .resource-tab.active {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+
+  .resource-calc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+  }
+
+  .resource-trial-list {
+    display: flex; flex-direction: column;
+    gap: 14px;
+  }
+
+  /* --- Calc menu (header button) --- */
+  #calcMenu .modal-body { padding: 22px 26px 28px; }
+  .calc-menu-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="brand" onclick="goHome()" style="cursor:pointer;">
+      <div class="brand-mark"><span>S</span>troke <em>Navigator</em></div>
+      <div class="brand-tag">Inpatient · TOAST · AHA 2026</div>
+    </div>
+    <nav class="header-nav" id="headerNav">
+      <button class="nav-btn" onclick="goResources()">
+        <span class="nav-btn-label">Resources</span>
+      </button>
+      <button class="nav-btn nav-btn-primary" onclick="goHome()" id="restartBtn" style="display:none;">
+        <span class="nav-btn-label">Restart</span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<!-- ============================================
+     HOME VIEW
+     ============================================ -->
+<div id="homeView" class="view view-home">
+  <div class="home-inner">
+    <h1 class="home-title">Stroke <em>Navigator</em></h1>
+    <div class="home-subheader">Inpatient stroke reference</div>
+    <p class="home-lede">
+      Click-through reference for ischemic etiology, TIA, ICH, SAH, CVST &amp; CRAO. Anchored in TOAST, AHA 2026, and the trials that define practice.
+    </p>
+
+    <div class="home-flow">
+      <div class="pillar">
+        <div class="pillar-num">01</div>
+        <div class="pillar-title">Etiology-driven</div>
+        <div class="pillar-body">TOAST + mechanism-specific targets.</div>
+      </div>
+      <div class="pillar-arrow" aria-hidden="true">
+        <svg viewBox="0 0 36 16" width="36" height="16" xmlns="http://www.w3.org/2000/svg">
+          <line x1="0" y1="8" x2="32" y2="8" stroke="currentColor" stroke-width="1.5"/>
+          <polyline points="26,3 32,8 26,13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="pillar">
+        <div class="pillar-num">02</div>
+        <div class="pillar-title">Context-aware</div>
+        <div class="pillar-body">Age, NIHSS, imaging, PMH layered into every plan.</div>
+      </div>
+      <div class="pillar-arrow" aria-hidden="true">
+        <svg viewBox="0 0 36 16" width="36" height="16" xmlns="http://www.w3.org/2000/svg">
+          <line x1="0" y1="8" x2="32" y2="8" stroke="currentColor" stroke-width="1.5"/>
+          <polyline points="26,3 32,8 26,13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="pillar">
+        <div class="pillar-num">03</div>
+        <div class="pillar-title">Trial-anchored</div>
+        <div class="pillar-body">PubMed-linked landmark trials at each decision.</div>
+      </div>
+    </div>
+
+    <div class="home-cta-row">
+      <button class="cta cta-primary" onclick="startWorkflow()">
+        Start workflow <span class="cta-arrow">→</span>
+      </button>
+      <button class="cta cta-ghost" onclick="goResources()">
+        Browse resources
+      </button>
+    </div>
+
+    <div class="home-meta">
+      <strong>Stroke Navigator</strong> · v2.0 · Inpatient neuro service<br>
+      AHA/ASA 2026 + ESO 2024 + landmark trial data through 2025.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================
+     WORKFLOW VIEW
+     ============================================ -->
+<div id="workflowView" class="view view-workflow" style="display:none;">
+
+  <!-- Left sidebar: vertical progress -->
+  <aside class="progress-bar">
+    <div class="progress-label">Workflow</div>
+    <div class="progress-inner" id="progressInner"></div>
+  </aside>
+
+  <!-- Right column: flag strip + content -->
+  <main class="workflow-main">
+    <div class="flag-strip" id="flagStrip" style="display:none;">
+      <span class="flag-strip-label">Context</span>
+      <span id="flagList"></span>
+    </div>
+    <div id="content"></div>
+  </main>
+
+  <!-- Right sidebar: patient context -->
+  <aside class="context-panel" id="contextPanel"></aside>
+</div>
+
+<!-- ============================================
+     RESOURCES VIEW
+     ============================================ -->
+<div id="resourcesView" class="view view-resources" style="display:none;">
+  <div class="resources-inner">
+    <div class="resources-head">
+      <div class="resources-eyebrow">Reference library</div>
+      <h1 class="resources-title">Resources</h1>
+    </div>
+
+    <div class="resource-tabs">
+      <button class="resource-tab active" id="tabTrials" onclick="setResourceTab('trials')">Trials</button>
+      <button class="resource-tab" id="tabCalcs" onclick="setResourceTab('calculators')">Calculators</button>
+    </div>
+
+    <div id="resourcesBody"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL ============ -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this)closeCalc()">
+  <div class="modal" id="modal"></div>
+</div>
+
+<!-- ============ CALCULATOR PICKER MENU ============ -->
+<div class="modal-backdrop" id="calcMenuBackdrop" onclick="if(event.target===this)closeCalcMenu()">
+  <div class="modal" id="calcMenu"></div>
+</div>
+
+<script>
+/* ===================================================================
+   STROKE NAVIGATOR — DATA + ENGINE
+   =================================================================== */
+
+/* ---- HYPERACUTE THERAPY (radio-pill selector) ---- */
+const ACUTE_OPTIONS = [
+  { id: 'none', label: 'None' },
+  { id: 'tnk',  label: 'tPA / TNK' },
+  { id: 'evt',  label: 'EVT' },
+  { id: 'both', label: 'tPA + EVT' },
+];
+let acuteState = 'none';
+
+/* Helper: re-render the currently visible plan stage if applicable, plus flag strip */
+function _reRender() {
+  if (typeof renderFlagStrip === 'function') renderFlagStrip();
+  if (typeof renderContextPanel === 'function') renderContextPanel();
+  if (typeof view !== 'undefined' && view === 'workflow' &&
+      typeof STAGES !== 'undefined' && STAGES[currentStageIdx] &&
+      STAGES[currentStageIdx].id === 'plan') {
+    renderPlanStage();
+  }
+}
+
+function renderAcute() {
+  // Used when the new patient-stage acuteBox is present; otherwise no-op.
+  const box = document.getElementById('acuteBox');
+  if (!box) return;
+  box.innerHTML = ACUTE_OPTIONS.map(a => `
+    <div class="form-pill ${acuteState === a.id ? 'active' : ''}" onclick="setAcute('${a.id}')">${a.label}</div>
+  `).join('');
+}
+function setAcute(id) {
+  acuteState = id;
+  renderAcute();
+  _reRender();
+}
+
+/* ---- POST-HYPERACUTE PROTOCOL CONTENT ---- */
+const ACUTE_PROTOCOLS = {
+  tnk: {
+    title: 'Post-thrombolysis (tPA / TNK) — first 24 hours',
+    items: [
+      '<strong>Window:</strong> tPA up to <em>4.5 h</em> from LKW (<strong>ECASS-3</strong>).',
+      '<strong>BP &lt;180/105</strong> for 24h (tighter than usual stroke target). Labetalol or nicardipine drip.',
+      '<strong>NO antithrombotics × 24h</strong> — no ASA, no DAPT, no AC, no DVT pharm-ppx.',
+      '<strong>24h NCHCT/MRI</strong> — rule out hemorrhagic conversion BEFORE starting any antithrombotic.',
+      'Neuro checks q15min × 2h → q30min × 6h → q1h × 16h.',
+      'Hold central line, NG tube, foley × 24h if possible.',
+      '<strong>Orolingual angioedema</strong> — especially if on ACE-I. Stop infusion, IV antihistamine + steroids ± epi.',
+      'Symptomatic HT → STAT NCHCT, hold all antithrombotics, reverse with cryoprecipitate ± TXA, neurosurgery consult.',
+      '<em>Caveat for very mild stroke (NIHSS ≤5):</em> ARAMIS / PRISMS suggest DAPT load is comparable to tPA with less sICH — borderline indications merit reconsideration.',
+    ],
+  },
+  evt: {
+    title: 'Post-EVT (mechanical thrombectomy) — first 24 hours',
+    items: [
+      '<strong>Windows:</strong> <em>0–6 h</em> from LKW per <strong>MR CLEAN</strong>; extended to <em>6–24 h</em> for ICA/proximal MCA with favorable imaging per <strong>DAWN</strong>.',
+      '<strong>BP target depends on recanalization:</strong> successful TICI 2b–3 → SBP &lt;140 (or 140–160 per institution); failed recanalization → SBP &lt;180/105.',
+      'BEST-II / ENCHANTED-2 suggest aggressive lowering (&lt;120) post-recanalization may worsen outcomes — find the sweet spot.',
+      'Antiplatelet/AC can typically start at 24h after confirming no hemorrhage on imaging (no thrombolytic restriction since no tPA).',
+      'Watch <strong>groin site</strong> — hematoma, retroperitoneal bleed, pseudoaneurysm. Check pulses, abdomen, Hgb.',
+      'Reperfusion injury / hemorrhagic conversion peaks 6–24h — repeat NCHCT at 24h or with any decline.',
+      'Neuro checks q15min × 2h → q30min × 6h → q1h × 16h.',
+    ],
+  },
+  both: {
+    title: 'Post tPA/TNK + EVT — first 24 hours',
+    items: [
+      '<strong>Both windows:</strong> tPA &lt;4.5 h (ECASS-3) + EVT 0–6 h (MR CLEAN) or 6–24 h with imaging selection (DAWN).',
+      '<em>Why both?</em> DIRECT-MT and similar trials suggested EVT alone may be non-inferior in some settings, but US/AHA practice still favors bridging tPA → EVT when eligible (tPA can dissolve distal emboli EVT can\'t reach, and starts faster).',
+      '<strong>Apply the stricter tPA rules:</strong> BP &lt;180/105 × 24h, NO antithrombotics × 24h, 24h imaging mandatory.',
+      'After successful recanalization, many centers tighten BP further (SBP &lt;140 or 140–160).',
+      'Higher hemorrhagic conversion risk than either modality alone — <strong>low threshold for STAT NCHCT</strong> with any decline.',
+      'Monitor groin site (EVT access) AND mucosal/IV sites (tPA bleeding risk).',
+      'Orolingual angioedema watch (tPA + ACE-I).',
+      'DVT ppx: SCDs only × 24h; pharm-ppx after 24h imaging clears bleed.',
+    ],
+  },
+};
+
+/* ===================================================================
+   NIHSS — input + severity band
+   =================================================================== */
+let nihssState = null; // null = unset
+
+function nihssBand(score) {
+  if (score === null || score === undefined || isNaN(score)) return null;
+  const s = Number(score);
+  if (s <= 5)  return { key: 'minor',    label: 'NIHSS ≤5 · Mild',        note: 'CHANCE / POINT / INSPIRES eligible · ARAMIS / PRISMS suggest DAPT load comparable to tPA in NIHSS ≤5 with less sICH.' };
+  if (s <= 15) return { key: 'moderate', label: 'NIHSS 6–15 · Moderate',  note: 'Standard tPA / EVT eligibility (per windows). Per ELAN, "mild–moderate" infarcts → DOAC start <48h if cardioembolic.' };
+  if (s <= 20) return { key: 'mod-sev',  label: 'NIHSS 16–20 · Mod-Severe', note: 'Higher hemorrhagic conversion risk. ELAN classifies "major" infarct → DOAC start day 6–7. Watch malignant edema if MCA territory.' };
+  return { key: 'severe', label: 'NIHSS 21+ · Severe', note: 'High HT and malignant edema risk; ICU-level care; consider hemicraniectomy (DESTINY/DECIMAL/HAMLET) for malignant MCA <60 yo. ELAN: DOAC delay to day 6–7 (or longer with re-imaging).' };
+}
+
+function setNihss(val) {
+  if (val === '' || val === null) { nihssState = null; }
+  else {
+    let n = parseInt(val, 10);
+    if (isNaN(n)) { nihssState = null; }
+    else { n = Math.max(0, Math.min(42, n)); nihssState = n; }
+  }
+  renderNihss();
+  _reRender();
+}
+
+function renderNihss() {
+  const band = nihssBand(nihssState);
+  const bandEl = document.getElementById('nihssBand');
+  const hintEl = document.getElementById('nihssHint');
+  if (!bandEl || !hintEl) return; // not currently in DOM (e.g., outside patient stage)
+  bandEl.className = 'nihss-band' + (band ? ' ' + band.key : '');
+  if (band) {
+    bandEl.textContent = band.label;
+    hintEl.textContent = band.note;
+  } else {
+    bandEl.textContent = '—';
+    hintEl.textContent = 'Enter NIHSS to tailor treatment recommendations.';
+  }
+}
+
+/* ===================================================================
+   AGE — input
+   =================================================================== */
+let ageState = null;
+
+function setAge(val) {
+  if (val === '' || val === null) { ageState = null; }
+  else {
+    let n = parseInt(val, 10);
+    if (isNaN(n)) { ageState = null; }
+    else { ageState = Math.max(0, Math.min(120, n)); }
+  }
+  _reRender();
+}
+
+/* ===================================================================
+   MRI / IMAGING FINDINGS
+   =================================================================== */
+const MRI_FINDINGS = [
+  { id: 'no_correlate',       label: 'No imaging correlates',                   hint: 'unremarkable / pending' },
+  // acute pattern
+  { id: 'acute_single',       label: 'Single acute infarct',                    hint: 'one DWI lesion' },
+  { id: 'acute_multi_same',   label: 'Multiple acute, same territory',          hint: 'embolic shower w/in vascular bed' },
+  { id: 'acute_multi_terr',   label: 'Multiple acute, multiple territories',    hint: 'strong cardioembolic / aortic signal' },
+  // location
+  { id: 'cortical',           label: 'Cortical involvement' },
+  { id: 'subcortical_only',   label: 'Subcortical / lacunar pattern only',      hint: '<1.5 cm, deep' },
+  // hemorrhagic
+  { id: 'ht',                 label: 'Hemorrhagic transformation' },
+  // chronic findings
+  { id: 'chronic_infarct',    label: 'Chronic infarct(s) present' },
+  { id: 'wmd',                label: 'Chronic small vessel / WM disease',       hint: 'periventricular/deep WMH' },
+  { id: 'cmb_lobar',          label: 'Microbleeds — strictly lobar',            hint: 'CAA-suggestive' },
+  { id: 'cmb_deep',           label: 'Microbleeds — deep',                       hint: 'HTN-related' },
+  { id: 'css',                label: 'Cortical superficial siderosis',          hint: 'CAA-defining' },
+];
+let mriState = {};
+
+function renderMRI() {
+  const box = document.getElementById('mriBox');
+  if (!box) return;
+  box.innerHTML = MRI_FINDINGS.map(f => `
+    <label class="form-check">
+      <input type="checkbox" data-id="${f.id}" ${mriState[f.id] ? 'checked' : ''} onchange="toggleMRI('${f.id}')">
+      <span class="box"></span>
+      <span class="label">${f.label}${f.hint ? ` <span class="label-hint">· ${f.hint}</span>` : ''}</span>
+    </label>
+  `).join('');
+}
+function toggleMRI(id) {
+  // Special handling: "no_correlate" is mutually exclusive with all others
+  if (id === 'no_correlate') {
+    const turningOn = !mriState[id];
+    if (turningOn) {
+      // clear all other MRI findings
+      Object.keys(mriState).forEach(k => { mriState[k] = false; });
+      mriState[id] = true;
+    } else {
+      mriState[id] = false;
+    }
+  } else {
+    // If any other gets toggled on, clear no_correlate
+    mriState[id] = !mriState[id];
+    if (mriState[id] && mriState.no_correlate) mriState.no_correlate = false;
+  }
+  renderMRI();
+  _reRender();
+}
+
+/* ===================================================================
+   CALCULATORS
+   Each: id, name, eyebrow, sub, items[], result(answers) -> {score, interp}
+   =================================================================== */
+const CALCULATORS = [
+  /* ---------- ABCD² ---------- */
+  {
+    id: 'abcd2',
+    name: 'ABCD² (TIA risk)',
+    eyebrow: 'TIA risk stratification',
+    sub: 'Predicts 2-day stroke risk after TIA. Threshold ≥4 = high-risk → CHANCE/POINT DAPT × 21 d.',
+    items: [
+      { label: 'Age ≥60', help: '', options: [['No', 0], ['Yes', 1]] },
+      { label: 'BP ≥140/90 at presentation', help: '', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Clinical features', help: '', options: [['Other', 0], ['Speech impairment without weakness', 1], ['Unilateral weakness', 2]] },
+      { label: 'Duration of symptoms', help: '', options: [['<10 min', 0], ['10–59 min', 1], ['≥60 min', 2]] },
+      { label: 'Diabetes', help: '', options: [['No', 0], ['Yes', 1]] },
+    ],
+    result: (s) => {
+      let interp;
+      if (s <= 3)  interp = '<strong>Low risk</strong> (~1.0% 2-d stroke risk). Workup still mandatory; ASA monotherapy reasonable.';
+      else if (s <= 5) interp = '<strong>Moderate risk</strong> (~4.1% 2-d stroke risk). Eligible for CHANCE / POINT 21-d DAPT protocol.';
+      else interp = '<strong>High risk</strong> (~8.1% 2-d stroke risk). Strong indication for 21-d DAPT (clopidogrel + ASA), hospital-based workup.';
+      return { score: s, max: 7, interp };
+    },
+  },
+
+  /* ---------- CHA₂DS₂-VASc ---------- */
+  {
+    id: 'cha2ds2vasc',
+    name: 'CHA₂DS₂-VASc',
+    eyebrow: 'Stroke risk in non-valvular AF',
+    sub: 'Estimates annual stroke risk in non-valvular AF. After a stroke, this score is automatically ≥2 → anticoagulate.',
+    items: [
+      { label: 'CHF (reduced EF or recent decompensation)', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Hypertension', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Age', options: [['<65', 0], ['65–74', 1], ['≥75', 2]] },
+      { label: 'Diabetes', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Prior stroke / TIA / thromboembolism', options: [['No', 0], ['Yes', 2]] },
+      { label: 'Vascular disease (CAD / PAD / aortic plaque)', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Sex', options: [['Male', 0], ['Female', 1]] },
+    ],
+    result: (s) => {
+      let interp;
+      if (s === 0) interp = '<strong>No anticoagulation</strong> (annual stroke risk ~0.2%). Note: post-stroke patients always score ≥2.';
+      else if (s === 1) interp = '<strong>Consider anticoagulation</strong> (~0.6% annual). Shared decision.';
+      else interp = '<strong>Anticoagulate</strong> — DOAC preferred over warfarin (apixaban / rivaroxaban / dabigatran / edoxaban). Annual stroke risk rises with score (≥2: ~2.2%, ≥4: ~4.0%, ≥6: ~9.8%).';
+      return { score: s, max: 9, interp };
+    },
+  },
+
+  /* ---------- HAS-BLED ---------- */
+  {
+    id: 'hasbled',
+    name: 'HAS-BLED',
+    eyebrow: 'Major bleeding risk on AC',
+    sub: 'Estimates 1-year major bleeding risk on anticoagulation. Score ≥3 = high risk — does NOT contraindicate AC, but flags modifiable factors.',
+    items: [
+      { label: 'Hypertension (uncontrolled, SBP >160)', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Abnormal renal function (Cr >2.3 / dialysis / transplant)', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Abnormal liver function (cirrhosis or bili 2× / AST/ALT/Alk-P 3×)', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Stroke history', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Bleeding history or predisposition', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Labile INR (TTR <60%)', options: [['No / N-A on DOAC', 0], ['Yes', 1]] },
+      { label: 'Elderly (>65)', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Drugs (antiplatelet / NSAID)', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Alcohol (≥8 drinks/week)', options: [['No', 0], ['Yes', 1]] },
+    ],
+    result: (s) => {
+      let interp;
+      if (s <= 2) interp = '<strong>Low–moderate risk</strong> (~1–3% / yr major bleed). Anticoagulate.';
+      else interp = '<strong>High risk</strong> (~4–9% / yr major bleed). Anticoagulate but address modifiable factors: BP, alcohol, NSAIDs, INR control.';
+      return { score: s, max: 9, interp };
+    },
+  },
+
+  /* ---------- RoPE ---------- */
+  {
+    id: 'rope',
+    name: 'RoPE (PFO causality)',
+    eyebrow: 'PFO-attributable stroke risk',
+    sub: 'Estimates likelihood that a PFO is the cause of a cryptogenic stroke. Higher score = more likely PFO-causal → favors closure.',
+    items: [
+      { label: 'No history of HTN', options: [['HTN present', 0], ['No HTN', 1]] },
+      { label: 'No history of diabetes', options: [['DM present', 0], ['No DM', 1]] },
+      { label: 'No history of stroke / TIA', options: [['Prior CVA/TIA', 0], ['No prior CVA/TIA', 1]] },
+      { label: 'Non-smoker', options: [['Smoker', 0], ['Non-smoker', 1]] },
+      { label: 'Cortical infarct on imaging', options: [['Non-cortical', 0], ['Cortical', 1]] },
+      { label: 'Age', options: [['≥70', 0], ['60–69', 1], ['50–59', 2], ['40–49', 3], ['30–39', 4], ['18–29', 5]] },
+    ],
+    result: (s) => {
+      // PFO-attributable fraction approximation by score band
+      let pct, interp;
+      if (s <= 3)      { pct = '0%';  interp = '<strong>PFO unlikely causal</strong> — closure not favored. Look for alternate etiology.'; }
+      else if (s <= 4) { pct = '38%'; interp = '<strong>Modest causal probability</strong> — individualize. Many vascular risk factors.'; }
+      else if (s <= 5) { pct = '34%'; interp = '<strong>Modest causal probability</strong> — individualize.'; }
+      else if (s <= 6) { pct = '62%'; interp = '<strong>Likely causal</strong> — favors PFO closure if age <60 and other criteria met (RESPECT/CLOSE/REDUCE).'; }
+      else if (s <= 7) { pct = '72%'; interp = '<strong>Likely causal</strong> — strong case for closure.'; }
+      else if (s <= 8) { pct = '84%'; interp = '<strong>Very likely causal</strong> — strong case for closure.'; }
+      else             { pct = '88%'; interp = '<strong>Very likely causal</strong> — strong case for closure.'; }
+      return { score: s, max: 10, interp: `Estimated PFO-attributable fraction: <strong>${pct}</strong>. ${interp}` };
+    },
+  },
+
+  /* ---------- BOSTON CRITERIA v2 ---------- */
+  {
+    id: 'boston',
+    name: 'Boston Criteria 2.0 (CAA)',
+    eyebrow: 'Cerebral amyloid angiopathy',
+    sub: 'Diagnosis of CAA in patients with lobar ICH or cognitive decline. v2.0 (2022) added cortical superficial siderosis and white matter changes.',
+    items: [
+      { label: 'Age', options: [['<50', 0], ['≥50', 1]] },
+      { label: 'Lobar ICH (cortical / subcortical, not deep / brainstem / cerebellar)', options: [['No / deep ICH', 0], ['Yes — single', 1], ['Yes — multiple', 2]] },
+      { label: 'Cortical superficial siderosis or convexity SAH', options: [['None', 0], ['Focal (≤3 sulci)', 1], ['Disseminated (>3 sulci)', 2]] },
+      { label: 'Strictly lobar microbleeds on GRE/SWI (≥1)', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Severe visible perivascular spaces in centrum semiovale (>20)', options: [['No', 0], ['Yes', 1]] },
+      { label: 'White matter hyperintensities in multispot pattern', options: [['No', 0], ['Yes', 1]] },
+    ],
+    result: (s, answers) => {
+      // Simplified v2 logic — categories require specific combinations, so we present a summary
+      const age = answers[0];
+      const lobarICH = answers[1];
+      const css = answers[2];
+      const microbleeds = answers[3];
+      let category, interp;
+      if (age === 0) {
+        category = 'Not applicable';
+        interp = 'Boston Criteria require age ≥50.';
+      } else if (lobarICH >= 2 || css >= 2 || (lobarICH >= 1 && css >= 1) || (lobarICH >= 1 && microbleeds >= 1)) {
+        category = 'Probable CAA';
+        interp = '<strong>Probable CAA</strong> — multiple lobar hemorrhagic lesions OR single lobar lesion + disseminated cortical superficial siderosis. Favors anti-amyloid posture: <strong>avoid anticoagulation</strong> if possible, address risk factors.';
+      } else if (lobarICH === 1 || css === 1 || microbleeds === 1) {
+        category = 'Possible CAA';
+        interp = '<strong>Possible CAA</strong> — single lobar hemorrhagic lesion. Consider repeat MRI / GRE-SWI; weigh AC risk vs benefit carefully.';
+      } else {
+        category = 'No CAA criteria met';
+        interp = 'No imaging criteria met for CAA on Boston v2.';
+      }
+      return { score: category, max: '', interp };
+    },
+  },
+
+  /* ---------- ICH SCORE ---------- */
+  {
+    id: 'ichscore',
+    name: 'ICH Score (mortality)',
+    eyebrow: 'Spontaneous ICH 30-day mortality',
+    sub: 'Hemphill ICH score predicts 30-day mortality after spontaneous intracerebral hemorrhage.',
+    items: [
+      { label: 'GCS', options: [['13–15', 0], ['5–12', 1], ['3–4', 2]] },
+      { label: 'ICH volume (cm³, ABC/2 method)', options: [['<30', 0], ['≥30', 1]] },
+      { label: 'IVH (intraventricular hemorrhage)', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Infratentorial origin', options: [['No', 0], ['Yes', 1]] },
+      { label: 'Age', options: [['<80', 0], ['≥80', 1]] },
+    ],
+    result: (s) => {
+      const mortality = { 0: '0%', 1: '13%', 2: '26%', 3: '72%', 4: '97%', 5: '100%', 6: '100%' };
+      return {
+        score: s,
+        max: 6,
+        interp: `Estimated 30-day mortality: <strong>${mortality[s] || '—'}</strong>. Score guides prognosis discussions but should not drive early withdrawal-of-care decisions; a self-fulfilling prophecy effect is well-documented.`,
+      };
+    },
+  },
+
+  /* ---------- HUNT-HESS ---------- */
+  {
+    id: 'hunthess',
+    name: 'Hunt-Hess (SAH)',
+    eyebrow: 'Aneurysmal SAH severity',
+    sub: 'Clinical grading of aneurysmal subarachnoid hemorrhage. Predicts surgical risk and survival.',
+    items: [
+      { label: 'Clinical presentation', options: [
+        ['Asymptomatic / mild HA / slight nuchal rigidity', 1],
+        ['Moderate–severe HA / nuchal rigidity / no neurologic deficit (except CN palsy)', 2],
+        ['Drowsy / confused / mild focal deficit', 3],
+        ['Stupor / moderate–severe hemiparesis / early decerebrate', 4],
+        ['Deep coma / decerebrate / moribund', 5],
+      ] },
+    ],
+    result: (s) => {
+      const survival = { 1: '~70%', 2: '~60%', 3: '~50%', 4: '~20%', 5: '~10%' };
+      let interp;
+      if (s <= 2) interp = `<strong>Good grade</strong> — survival ${survival[s]}. Early aneurysm securing (coil > clip per ISAT). Standard nimodipine × 21 d.`;
+      else if (s === 3) interp = `<strong>Intermediate</strong> — survival ${survival[s]}. Still aim to secure aneurysm early.`;
+      else interp = `<strong>Poor grade</strong> — survival ${survival[s]}. ICU, EVD if hydrocephalus, individualized aneurysm timing.`;
+      return { score: s, max: 5, interp };
+    },
+  },
+];
+
+/* ---- modal state + engine ---- */
+let activeCalc = null;
+let calcAnswers = [];
+
+function renderCalcList() {
+  document.getElementById('calcList').innerHTML = CALCULATORS.map(c => `
+    <button class="calc-btn" onclick="openCalc('${c.id}')">
+      <span class="calc-name">${c.name}</span>
+      <span class="calc-arrow">→</span>
+    </button>
+  `).join('');
+}
+
+function openCalc(id) {
+  activeCalc = CALCULATORS.find(c => c.id === id);
+  calcAnswers = activeCalc.items.map(() => null);
+  renderCalcModal();
+  document.getElementById('modalBackdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCalc() {
+  document.getElementById('modalBackdrop').classList.remove('open');
+  activeCalc = null;
+  document.body.style.overflow = '';
+}
+
+function setCalcAnswer(qIdx, value) {
+  calcAnswers[qIdx] = value;
+  renderCalcModal();
+}
+
+function renderCalcModal() {
+  if (!activeCalc) return;
+  const allAnswered = calcAnswers.every(a => a !== null);
+  const sum = calcAnswers.reduce((acc, v) => acc + (v || 0), 0);
+  let resultHTML = '';
+  if (allAnswered) {
+    const r = activeCalc.result(sum, calcAnswers);
+    // Only show "Continue" button when we're in the scoring workflow context
+    const continueBtn = (_scoringContext)
+      ? `<button class="calc-continue-btn" onclick="closeCalc()">Continue <span style="font-family:var(--serif); margin-left:6px;">→</span></button>`
+      : '';
+    resultHTML = `
+      <div class="calc-result">
+        <div class="calc-result-label">Result</div>
+        <div class="calc-result-score">${r.score}${r.max !== '' && r.max !== undefined ? `<em>/ ${r.max}</em>` : ''}</div>
+        <div class="calc-result-interp">${r.interp}</div>
+        ${continueBtn}
+      </div>
+    `;
+  }
+
+  document.getElementById('modal').innerHTML = `
+    <div class="modal-head">
+      <div>
+        <div class="modal-eyebrow">${activeCalc.eyebrow}</div>
+        <div class="modal-title">${activeCalc.name}</div>
+        <div class="modal-sub">${activeCalc.sub}</div>
+      </div>
+      <button class="modal-close" onclick="closeCalc()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      ${activeCalc.items.map((q, qi) => `
+        <div class="calc-q">
+          <div class="calc-q-label">${q.label}</div>
+          ${q.help ? `<div class="calc-q-help">${q.help}</div>` : ''}
+          <div class="calc-q-options">
+            ${q.options.map(([label, val]) => `
+              <button class="calc-opt ${calcAnswers[qi] === val ? 'active' : ''}" onclick="setCalcAnswer(${qi}, ${val})">${label} <span style="opacity:.55;margin-left:4px">(${val})</span></button>
+            `).join('')}
+          </div>
+        </div>
+      `).join('')}
+      ${resultHTML}
+    </div>
+  `;
+}
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeCalc(); });
+
+/* ---- PMH / risk factor toggles ---- */
+const PMH = [
+  { id: 'afib',     label: 'Atrial fibrillation',           hint: 'paroxysmal or persistent' },
+  { id: 'htn',      label: 'Hypertension' },
+  { id: 'dm',       label: 'Diabetes' },
+  { id: 'hld',      label: 'Hyperlipidemia' },
+  { id: 'cad',      label: 'CAD / prior MI' },
+  { id: 'chf',      label: 'CHF (reduced EF)' },
+  { id: 'priorcva', label: 'Prior stroke / TIA' },
+  { id: 'smoke',    label: 'Active smoker' },
+  { id: 'osa',      label: 'OSA' },
+  { id: 'ckd',      label: 'CKD' },
+  { id: 'cancer',   label: 'Active malignancy' },
+  { id: 'preg',     label: 'Pregnant / postpartum' },
+  { id: 'pfo',      label: 'Known PFO' },
+];
+
+const MEDS = [
+  { id: 'asa',         label: 'Aspirin',                    hint: '81 / 325 mg' },
+  { id: 'clopi',       label: 'Clopidogrel',                hint: 'Plavix' },
+  { id: 'tica',        label: 'Ticagrelor',                 hint: 'Brilinta' },
+  { id: 'warfarin',    label: 'Warfarin' },
+  { id: 'doac',        label: 'DOAC',                       hint: 'apix / riva / dabi / edox' },
+  { id: 'statin_high', label: 'High-intensity statin',      hint: 'atorva 40/80, rosuva 20/40' },
+  { id: 'statin_mod',  label: 'Moderate-intensity statin' },
+  { id: 'aceiarb',     label: 'ACE-I / ARB' },
+  { id: 'bp_other',    label: 'Other antihypertensive',     hint: 'BB, CCB, thiazide' },
+  { id: 'ppi',         label: 'PPI',                        hint: 'omeprazole, pantoprazole' },
+];
+
+let medState = {};
+
+function renderMeds() {
+  const box = document.getElementById('medsBox');
+  if (!box) return;
+  box.innerHTML = MEDS.map(m => `
+    <label class="form-check">
+      <input type="checkbox" data-id="${m.id}" ${medState[m.id] ? 'checked' : ''} onchange="toggleMed('${m.id}')">
+      <span class="box"></span>
+      <span class="label">${m.label}${m.hint ? ` <span class="label-hint">· ${m.hint}</span>` : ''}</span>
+    </label>
+  `).join('');
+}
+function toggleMed(id) {
+  medState[id] = !medState[id];
+  _reRender();
+}
+
+let pmhState = {};
+
+function renderPMH() {
+  const box = document.getElementById('pmhBox');
+  if (!box) return;
+  box.innerHTML = PMH.map(p => `
+    <label class="form-check">
+      <input type="checkbox" data-id="${p.id}" ${pmhState[p.id] ? 'checked' : ''} onchange="togglePMH('${p.id}')">
+      <span class="box"></span>
+      <span class="label">${p.label}${p.hint ? ` <span class="label-hint">· ${p.hint}</span>` : ''}</span>
+    </label>
+  `).join('');
+}
+function togglePMH(id) {
+  pmhState[id] = !pmhState[id];
+  _reRender();
+}
+function resetAll() {
+  pmhState = {};
+  mriState = {};
+  medState = {};
+  nihssState = null;
+  ageState = null;
+  acuteState = 'none';
+  savedScores = {};
+  const nIn = document.getElementById('nihssInput'); if (nIn) nIn.value = '';
+  const aIn = document.getElementById('ageInput');   if (aIn) aIn.value = '';
+  renderPMH();
+  renderMRI();
+  renderMeds();
+  renderNihss();
+  renderAcute();
+  _reRender();
+}
+function renderFlagStrip() {
+  const activePMH = PMH.filter(p => pmhState[p.id]);
+  const activeMRI = MRI_FINDINGS.filter(f => mriState[f.id]);
+  const activeMeds = MEDS.filter(m => medState[m.id]);
+  const strip = document.getElementById('flagStrip');
+  if (!strip) return;
+  // Only show in workflow view
+  if (view !== 'workflow') { strip.style.display = 'none'; return; }
+  const acuteLabel = ACUTE_OPTIONS.find(a => a.id === acuteState).label;
+  const showAcute = acuteState !== 'none';
+  const showNihss = nihssState !== null;
+  const showAge = ageState !== null;
+  if (!activePMH.length && !activeMRI.length && !activeMeds.length && !showAcute && !showNihss && !showAge) {
+    strip.style.display = 'none'; return;
+  }
+  strip.style.display = 'flex';
+  const nihssFlag = showNihss
+    ? `<span class="flag" style="background:var(--ink); color:var(--bg);">NIHSS ${nihssState}</span>` : '';
+  const ageFlag = showAge
+    ? `<span class="flag" style="background:var(--ink); color:var(--bg);">Age ${ageState}</span>` : '';
+  const acuteFlag = showAcute
+    ? `<span class="flag" style="background:var(--accent);">Hyperacute: ${acuteLabel}</span>` : '';
+  const mriFlags = activeMRI.map(f => `<span class="flag" style="background:var(--teal);">${f.label}</span>`).join('');
+  const medFlags = activeMeds.map(m => `<span class="flag" style="background:#4a5a7a;">${m.label}</span>`).join('');
+  const list = document.getElementById('flagList');
+  if (list) list.innerHTML =
+    nihssFlag + ageFlag + acuteFlag + mriFlags + medFlags + activePMH.map(p => `<span class="flag">${p.label}</span>`).join('');
+}
+
+/* ===================================================================
+   TRIAL LIBRARY
+   =================================================================== */
+const TRIALS = {
+  CHANCE: {
+    name: 'CHANCE', year: 2013,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/23803136/',
+    tagline: 'DAPT × 21 days for high-risk TIA / minor stroke beats aspirin alone.',
+    population: 'Chinese cohort, n=5,170. High-risk TIA (ABCD² ≥4) or minor ischemic stroke (NIHSS ≤3), within 24 h.',
+    intervention: 'ASA + clopidogrel × 21 days, then clopidogrel monotherapy through day 90.',
+    outcome: 'Recurrent stroke at 90 d reduced vs ASA alone; no difference in major bleeding.',
+  },
+  POINT: {
+    name: 'POINT', year: 2018,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/29766750/',
+    tagline: 'Confirmed CHANCE in N. America/AU/NZ — but bleeding rises if DAPT extended past 21 days.',
+    population: 'n=4,881. High-risk TIA (ABCD² ≥4) or minor stroke (NIHSS ≤3), randomized within 12 h.',
+    intervention: 'Clopidogrel 600 mg load → 75 mg + ASA × 90 days vs ASA alone.',
+    outcome: 'Major ischemic events ↓ (5.0% vs 6.5%, HR 0.75) but major hemorrhage ↑ (HR 2.32). Majority of benefit in first 7–30 days → 21-day truncation became practice.',
+  },
+  THALES: {
+    name: 'THALES', year: 2020,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/32668111/',
+    tagline: 'Ticagrelor + ASA × 30 d ↓ stroke/death vs ASA alone in NIHSS ≤5 / high-risk TIA.',
+    population: 'NIHSS ≤5 or high-risk TIA, no tPA / no thrombectomy, within 24 h.',
+    intervention: 'Ticagrelor + ASA × 30 days vs ASA alone.',
+    outcome: 'Stroke or death within 30 d lower with ticagrelor + ASA, but disability not different and severe bleeding higher.',
+  },
+  INSPIRES: {
+    name: 'INSPIRES', year: 2023,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/38018723/',
+    tagline: 'DAPT remains effective when started up to 72 h after onset for mild stroke / high-risk TIA.',
+    population: 'NIHSS ≤5 or high-risk TIA presenting within 72 h (extends CHANCE/POINT 24 h window).',
+    intervention: 'Clopidogrel + ASA × 21 days then clopidogrel × 90 days vs ASA alone.',
+    outcome: 'Recurrent stroke at 90 d reduced; bleeding modestly higher. Supports DAPT for late-presenting mild stroke.',
+  },
+  SAMMPRIS: {
+    name: 'SAMMPRIS', year: 2011,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/21899409/',
+    tagline: 'Aggressive medical management beats stenting for symptomatic intracranial atherosclerosis.',
+    population: 'n=451. Recent TIA / stroke from 70–99% intracranial stenosis.',
+    intervention: 'ASA 325 + clopidogrel 75 × 90 d + intensive risk-factor management (BP <140/90 or <130/80 if DM, LDL <70) vs Wingspan stenting.',
+    outcome: '30-day stroke 14.7% with stent vs 5.8% medical → medical wins. Drives "DAPT × 90 d for ICAD".',
+  },
+  ECASS3: {
+    name: 'ECASS-3', year: 2008,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/18815396/',
+    tagline: 'IV alteplase improves outcomes given 3–4.5 h after stroke onset.',
+    population: 'n=821. Ischemic stroke 3–4.5 h after LKW (mean 3 h 59 min).',
+    intervention: 'IV alteplase vs placebo.',
+    outcome: 'Better neurologic outcomes; sICH 2.4% vs 0.2%; mortality unchanged. Established the 4.5-h tPA window.',
+  },
+  MRCLEAN: {
+    name: 'MR CLEAN', year: 2015,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/25517348/',
+    tagline: 'Mechanical thrombectomy benefits anterior-circulation LVO up to 6 h from LKW.',
+    population: 'Proximal anterior-circulation LVO, treatable within 6 h.',
+    intervention: 'Endovascular thrombectomy + usual care vs usual care alone.',
+    outcome: 'Functional independence at 90 d shifted favorably; established EVT for the 0–6 h window.',
+  },
+  DAWN: {
+    name: 'DAWN', year: 2018,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/29129157/',
+    tagline: 'Thrombectomy benefits LVO up to 24 h from LKW with favorable imaging.',
+    population: 'n=206. ICA / proximal MCA occlusion, 6–24 h from LKW, clinical–core mismatch.',
+    intervention: 'Thrombectomy + standard care vs standard care.',
+    outcome: 'Functional independence at 90 d 49% vs 13%; sICH not significantly different.',
+  },
+  ARAMIS: {
+    name: 'ARAMIS', year: 2022,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/36692560/',
+    tagline: 'DAPT load is non-inferior to IV alteplase for very mild stroke (NIHSS ≤5).',
+    population: 'n=760. NIHSS ≤5 within 4.5 h of onset.',
+    intervention: 'DAPT load vs IV alteplase.',
+    outcome: '93.8% (DAPT) vs 91.4% (tPA) excellent outcome. More sICH in tPA group.',
+  },
+  PRISMS: {
+    name: 'PRISMS', year: 2018,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/29998337/',
+    tagline: 'ASA 325 mg comparable to tPA for very mild stroke — terminated early.',
+    population: 'n=313. NIHSS ≤5.',
+    intervention: 'ASA 325 mg vs IV alteplase.',
+    outcome: '81.5% vs 78.2% favorable outcome; more sICH with alteplase. Stopped early.',
+  },
+  EAGLE: {
+    name: 'EAGLE', year: 2010,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/20451044/',
+    tagline: 'IA fibrinolysis NOT recommended for acute CRAO — equal efficacy, more harm.',
+    population: 'n=82 (Austria/Germany). Acute central retinal artery occlusion.',
+    intervention: 'Local IA fibrinolysis (LIF) vs conservative standard treatment.',
+    outcome: 'Visual improvement 60% (CST) vs 57% (LIF); adverse events 4.3% vs 37.1% — stopped at first interim. The negative trial of the set.',
+  },
+  ELAN: {
+    name: 'ELAN', year: 2023,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/37222476/',
+    tagline: 'Early DOAC initiation is non-inferior to delayed in cardioembolic AF stroke.',
+    population: 'AF + acute ischemic stroke.',
+    intervention: 'Early (<48 h mild–moderate; day 6–7 major) vs late DOAC start.',
+    outcome: '30-d composite (recurrent stroke, embolism, major bleed, sICH, vascular death) 2.9% early vs 4.1% late. Lower ischemic events, similar bleeding.',
+  },
+  SPARCL: {
+    name: 'SPARCL', year: 2006,
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/16899775/',
+    tagline: 'Atorvastatin 80 mg after stroke / TIA reduces recurrent stroke and CV events.',
+    population: 'n=4,731. Recent ischemic stroke or TIA.',
+    intervention: 'Atorvastatin 80 mg vs placebo.',
+    outcome: 'Reduced stroke recurrence and CV events. Mean LDL 73 (treatment) vs 129 (placebo) — drives "high-intensity statin, LDL <70" rule.',
+  },
+  CREST: {
+    name: 'CREST (I, II)', year: '2010 / 2024',
+    pubmed: 'https://pubmed.ncbi.nlm.nih.gov/20505173/',
+    tagline: 'CEA vs CAS equivalent overall; <70 yo favors stenting, >70 yo favors CEA.',
+    population: 'n≈2,500. Symptomatic and asymptomatic carotid stenosis.',
+    intervention: 'Carotid stenting (CAS) vs endarterectomy (CEA).',
+    outcome: 'Composite stroke / MI / death equivalent. Stenting → fewer peri-procedural MIs; CEA → fewer peri-procedural strokes. CREST-2 added a medical-only arm for asymptomatic disease.',
+  },
+};
+
+/* ===================================================================
+   ALGORITHM TREE
+   Each node has: title, help, options[] OR terminal payload
+   =================================================================== */
+const NODES = {
+  /* ---------- ROOT ---------- */
+  root: {
+    label: 'Stroke type',
+    title: 'What type of stroke is this?',
+    help: 'Confirm with non-contrast CT (and CTA / MRI as available). Set hyperacute therapy (left sidebar) if tPA / EVT was given — this layers post-reperfusion protocols onto every ischemic terminal.',
+    options: [
+      { id: 'ischemic', title: 'Ischemic stroke',                desc: 'Confirmed AIS — moving to TOAST classification.', next: 'toast' },
+      { id: 'tia',      title: 'TIA',                            desc: 'Transient symptoms, no infarct on MRI. Risk-stratify & treat.', next: 'tia' },
+      { id: 'ich',      title: 'Intracerebral hemorrhage',       desc: 'Spontaneous parenchymal bleed.', next: 'ich' },
+      { id: 'sah',      title: 'Subarachnoid hemorrhage',        desc: 'Aneurysmal vs non-aneurysmal SAH.', next: 'sah' },
+      { id: 'cvst',     title: 'Cerebral venous sinus thrombosis', desc: 'Sinus thrombosis on MRV / CTV.', next: 'cvst' },
+      { id: 'crao',     title: 'Central retinal artery occlusion (CRAO)', desc: 'Stroke equivalent — workup as ischemic stroke.', next: 'crao' },
+    ],
+  },
+
+  /* ===================================================================
+     ISCHEMIC — TOAST
+     =================================================================== */
+  toast: {
+    label: 'TOAST',
+    title: 'TOAST classification — what is the etiology?',
+    help: 'Use vessel imaging (CTA/MRA neck + head), TTE (± TEE / bubble), telemetry ≥24h (longer if cryptogenic), labs, and lipid/A1c. Pick the dominant mechanism — many patients have >1 risk factor.',
+    options: [
+      { id: 'lvd',  title: 'Large-artery atherosclerosis',  desc: '≥50% stenosis or plaque in a relevant artery; cortical / cerebellar / brainstem infarct.', next: 'lvd' },
+      { id: 'card', title: 'Cardioembolic',                  desc: 'AF, mechanical valve, recent MI, LV thrombus, dilated CM, endocarditis.', next: 'card' },
+      { id: 'sva',  title: 'Small-vessel (lacunar)',         desc: 'Classic lacunar syndrome + subcortical infarct <1.5 cm.', next: 'sva' },
+      { id: 'odet', title: 'Other determined etiology',      desc: 'Dissection, vasculitis, hypercoagulable state, sickle cell, etc.', next: 'odet' },
+      { id: 'esus', title: 'Cryptogenic / ESUS',             desc: 'Embolic-appearing infarct, no source after standard workup.', next: 'esus' },
+    ],
+  },
+
+  /* ----- LARGE VESSEL ----- */
+  lvd: {
+    label: 'Large vessel',
+    title: 'Where is the culprit lesion?',
+    help: 'Localization changes the procedure: CEA vs CAS vs medical-only for intracranial stenosis.',
+    options: [
+      { id: 'lvd-carotid-sx',  title: 'Symptomatic extracranial carotid 50–99%', desc: 'Ipsilateral to infarct, surgically accessible.', next: 'lvd_carotid_sx' },
+      { id: 'lvd-carotid-asx', title: 'Asymptomatic carotid ≥70%',                desc: 'Incidental finding, contralateral or no cortical sx.', next: 'lvd_carotid_asx' },
+      { id: 'lvd-vert',        title: 'Vertebral / basilar atherosclerosis',     desc: 'Posterior circulation symptomatic disease.',     next: 'lvd_vert' },
+      { id: 'lvd-icad',        title: 'Intracranial atherosclerosis (MCA / ICA / BA)', desc: '≥70% intracranial stenosis with relevant infarct.', next: 'lvd_icad' },
+      { id: 'lvd-aortic',      title: 'Aortic arch atheroma',                     desc: 'Complex/mobile plaque ≥4 mm on TEE.',           next: 'lvd_aortic' },
+    ],
+  },
+
+  lvd_carotid_sx: {
+    label: 'Sx carotid',
+    title: 'Symptomatic carotid 50–99%',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Large-artery atherosclerosis · symptomatic ICA',
+      title: 'Revascularize early — within 2 weeks',
+      summary: 'Per <strong>CREST</strong>, CEA and CAS have equivalent composite outcomes overall; <strong>age &lt;70 → favor stenting</strong> (CAS); <strong>age ≥70 → favor CEA</strong>. Benefit is highest when done within 14 days of symptom onset. Pair with intensive medical therapy regardless of modality.',
+    },
+    rx: { label: 'Treatment', rx: 'Revasc &lt;14 days · <em>&lt;70 yo → CAS</em> · <em>≥70 yo → CEA</em> · ASA 81 mg · atorva 80 (LDL &lt;70) · BP &lt;130/80', detail: 'CAS associated with fewer peri-procedural MIs; CEA with fewer peri-procedural strokes. NASCET established the benefit at 70–99%; modest benefit at 50–69%.' },
+    nextSteps: [
+      '<strong>Vascular surgery consult</strong> — CEA or CAS within 14 days, age-stratified per CREST',
+      'CTA neck + head (if not already) to confirm % stenosis & rule out tandem disease',
+      'Lipid panel · A1c · high-intensity statin (atorvastatin 80 / rosuvastatin 40), goal LDL <70 (SPARCL)',
+      'BP target <130/80 — usually ACE-I or ARB + thiazide',
+      'Antiplatelet: ASA 81 mg daily; short-course DAPT ×21d (CHANCE/POINT) if minor stroke (NIHSS ≤3) or DAPT ×72h window if presented late (INSPIRES)',
+      'PT / OT / SLP eval — discharge planning to acute rehab vs SAR',
+      'DVT ppx with SCDs ± LMWH (per bleed risk)',
+      'Smoking cessation counseling, A1c <7, lifestyle / Mediterranean diet',
+    ],
+    watchOut: [
+      '<strong>Hyperperfusion syndrome</strong> post-revasc: HA, seizure, ICH — strict BP control after',
+      'Tandem occlusion or contralateral high-grade disease — alters surgical plan',
+      'Don\'t delay revasc past 2 weeks unless contraindicated — benefit drops sharply',
+      'Avoid over-correcting BP <120 in patients with high-grade stenosis pre-op (watershed risk)',
+      'CREST was idealized — real-world operator experience matters',
+    ],
+    trials: ['CREST', 'SPARCL'],
+  },
+
+  lvd_carotid_asx: {
+    label: 'Asx carotid',
+    title: 'Asymptomatic carotid ≥70%',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Asymptomatic carotid stenosis',
+      title: 'Intensive medical therapy first',
+      summary: '<strong>CREST-2 (2024)</strong> shows medical optimization is comparable to revascularization for asymptomatic disease in the modern era. Reserve CEA / CAS for selected patients with high-risk plaque features or progression.',
+    },
+    rx: { label: 'Treatment', rx: 'Intensive medical therapy · ASA 81 mg · atorvastatin 80 (LDL &lt;70) · BP &lt;130/80', detail: 'Discuss revascularization only if plaque features high-risk (ulceration, microembolic signals, progression). Same age-stratified CREST principle applies if you do revasc.' },
+    nextSteps: [
+      'Lipid panel · A1c — high-intensity statin to LDL <70 (SPARCL)',
+      'BP <130/80 (ACE-I / ARB)',
+      'ASA 81 mg daily',
+      'Lifestyle: smoking cessation, Mediterranean diet, exercise',
+      'Surveillance carotid duplex q6–12 mo',
+    ],
+    watchOut: [
+      'Don\'t reflexively send asymptomatic patients for CEA — CREST-2 changed this',
+      'Re-classify as symptomatic if any TIA/stroke ipsilateral — revasc window opens',
+    ],
+    trials: ['CREST', 'SPARCL'],
+  },
+
+  lvd_vert: {
+    label: 'Vert / basilar',
+    title: 'Vertebral / basilar atherosclerosis',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Posterior-circulation large-vessel disease',
+      title: 'Aggressive medical management',
+      summary: 'Stenting of vertebral / basilar disease has not shown benefit. Treat as you would intracranial atherosclerosis (SAMMPRIS-style): DAPT ×90 days + high-intensity statin + BP <140/90.',
+    },
+    rx: { label: 'Treatment', rx: 'DAPT (ASA + clopidogrel) ×90 days → ASA mono · atorvastatin 80 · BP <140/90', detail: 'Endovascular reserved for medical-failure / recurrent events at experienced centers.' },
+    nextSteps: [
+      'CTA / MRA to localize stenosis (V1–V4, basilar)',
+      'High-intensity statin to LDL <70',
+      'BP target <140/90 (avoid aggressive lowering early — watershed risk)',
+      'A1c <7, smoking cessation',
+      'PT / OT / SLP — gait & vertigo training as needed',
+    ],
+    watchOut: [
+      'Do not over-lower BP early (perfusion-dependent infarct)',
+      'Basilar thrombosis can fluctuate — low threshold to repeat imaging if deterioration',
+    ],
+    trials: ['SAMMPRIS'],
+  },
+
+  lvd_icad: {
+    label: 'Intracranial AS',
+    title: 'Symptomatic intracranial atherosclerosis ≥70%',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Intracranial atherosclerotic disease',
+      title: 'SAMMPRIS protocol — medical wins',
+      summary: 'Stenting (Wingspan) increased 30-day stroke/death vs medical. Aggressive medical = <strong>DAPT ×90 days + high-intensity statin + BP control + lifestyle</strong>.',
+    },
+    rx: { label: 'Treatment', rx: '<em>DAPT</em> (ASA 325 → 81 + clopidogrel 75) ×90 days, then ASA mono · atorvastatin 80 · BP <140/90', detail: 'BP target liberalized first 1–2 weeks to maintain perfusion; tighten to <130/80 after.' },
+    nextSteps: [
+      'Confirm ≥70% intracranial stenosis on CTA / MRA / DSA',
+      'High-intensity statin to LDL <70',
+      'BP <140/90 in first 1–2 weeks → <130/80 thereafter',
+      'A1c <7%',
+      'Antiplatelet duration: DAPT ×90d, then ASA monotherapy lifelong',
+      'PT/OT/SLP based on deficits',
+    ],
+    watchOut: [
+      'Watershed strokes if BP dropped too aggressively early on',
+      'CYP2C19 LOF → consider ticagrelor (CHANCE-2) or alternative',
+      'Aspirin + clopidogrel beyond 90d → bleeding without benefit',
+    ],
+    trials: ['SAMMPRIS', 'SPARCL'],
+  },
+
+  lvd_aortic: {
+    label: 'Aortic arch',
+    title: 'Aortic arch atheroma (≥4 mm or mobile)',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Complex aortic arch plaque',
+      title: 'Antiplatelet + statin — anticoagulation has NOT shown benefit',
+      summary: '<strong>ARCH trial</strong> showed no benefit of warfarin over DAPT for arch atheroma. Treat as high-risk atherosclerosis.',
+    },
+    rx: { label: 'Treatment', rx: 'ASA 81 mg + high-intensity statin · BP <130/80', detail: 'DAPT may be considered short-term in select patients but routine anticoagulation NOT recommended.' },
+    nextSteps: [
+      'TEE (already done if you got here) — characterize plaque, mobility',
+      'High-intensity statin · LDL <70',
+      'BP <130/80 · A1c <7',
+      'Smoking cessation',
+    ],
+    watchOut: [
+      'Don\'t default to anticoagulation — no trial benefit',
+      'Mobile plaque has higher recurrence risk — consider closer surveillance',
+    ],
+    trials: [],
+  },
+
+  /* ----- CARDIOEMBOLIC ----- */
+  card: {
+    label: 'Cardioembolic',
+    title: 'What is the cardiac source?',
+    help: 'TTE first; TEE if higher suspicion (PFO, valve, LAA, aortic arch). ≥24h telemetry standard, longer cardiac monitoring (loop / patch) if cryptogenic.',
+    options: [
+      { id: 'card-af',     title: 'Atrial fibrillation / flutter',         desc: 'New or known AF — anticoagulate.',           next: 'card_af' },
+      { id: 'card-mech',   title: 'Mechanical valve',                       desc: 'Warfarin only — DOACs contraindicated.',     next: 'card_mech' },
+      { id: 'card-bio',    title: 'Bioprosthetic valve (incl. TAVR)',        desc: 'Surgical or transcatheter tissue valve.',    next: 'card_bio' },
+      { id: 'card-thromb', title: 'LV thrombus / recent MI / low EF',       desc: 'Apical thrombus, anterior MI, EF <35%.',     next: 'card_thromb' },
+      { id: 'card-endo',   title: 'Infective endocarditis',                  desc: 'Vegetation + embolic stroke.',               next: 'card_endo' },
+      { id: 'card-other',  title: 'Other (rheumatic MS, NBTE, cardiac mass)', desc: 'Less common cardiac sources.',             next: 'card_other' },
+    ],
+  },
+
+  card_af: {
+    label: 'AF',
+    title: 'Atrial fibrillation + acute ischemic stroke',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Cardioembolic · AF',
+      title: 'Anticoagulate — timing depends on infarct size',
+      summary: '<strong>ELAN (2023)</strong> showed early DOAC initiation is non-inferior to delayed and reduces ischemic events without excess bleeding. Per ELAN: <strong>early = &lt;48 h for mild–moderate strokes, day 6–7 for major strokes</strong>. (Late protocol was minor 3–4 d, moderate 6–7 d, major 12–14 d.)',
+    },
+    rx: { label: 'Treatment', rx: '<em>DOAC</em> — apixaban 5 mg BID (or 2.5 mg if 2 of: age ≥80, weight ≤60 kg, Cr ≥1.5) · or rivaroxaban / dabigatran / edoxaban', detail: 'Warfarin if mechanical valve, severe MS, ESRD, or DOAC contraindicated. ASA bridge while waiting for DOAC start is reasonable.' },
+    nextSteps: [
+      '<strong>TTE</strong> — assess EF, LA size, valves, LV thrombus',
+      'TSH, CBC, BMP, LFTs, lipids, A1c',
+      '≥24h telemetry (longer if AF burden uncertain or paroxysmal)',
+      'CHA₂DS₂-VASc &amp; HAS-BLED documented',
+      'Start DOAC per ELAN: &lt;48h for mild–moderate, day 6–7 for major infarcts',
+      'High-intensity statin (LDL <70 — SPARCL)',
+      'Rate vs rhythm control — cardiology consult',
+      'PT / OT / SLP',
+      'AHA 2026: avoid DAPT for AF stroke — anticoag is the answer',
+    ],
+    watchOut: [
+      'Do NOT stack antiplatelet with DOAC unless recent stent / PCI (then triple ×short course)',
+      'Hemorrhagic conversion — re-image before starting AC if large infarct or ↓ LOC',
+      'Renal function for DOAC dosing — apixaban most forgiving',
+      'LAA closure (Watchman) for patients who can\'t tolerate long-term anticoag',
+    ],
+    trials: ['ELAN'],
+  },
+
+  card_mech: {
+    label: 'Mech valve',
+    title: 'Mechanical heart valve',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Cardioembolic · mechanical valve',
+      title: 'Warfarin only — bridge with heparin',
+      summary: 'DOACs are <strong>contraindicated</strong> in mechanical valves (RE-ALIGN trial showed harm). Bridge with UFH or LMWH to therapeutic INR.',
+    },
+    rx: { label: 'Treatment', rx: '<em>Warfarin</em> with bridging — INR target 2.5 (aortic) or 3.0 (mitral / older valves)', detail: 'Add ASA 81 mg if additional vascular indications (per ACC/AHA valve guidelines).' },
+    nextSteps: [
+      'TTE / TEE — confirm valve function, rule out vegetation',
+      'INR + CBC + BMP daily until therapeutic',
+      'Cardiology / CT surgery consult',
+      'PT / OT / SLP',
+      'Statin if vascular comorbidities',
+    ],
+    watchOut: [
+      'Never use DOAC for mechanical valve',
+      'Watch for HIT if heparin bridge >5 days',
+      'Hemorrhagic conversion risk during bridge — image-verify before starting',
+    ],
+    trials: [],
+  },
+
+  card_bio: {
+    label: 'Bioprosthetic',
+    title: 'Bioprosthetic valve (surgical or TAVR)',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Cardioembolic · bioprosthetic valve',
+      title: 'Antithrombotic depends on age of valve, position, and AF status',
+      summary: 'Bioprosthetic valves are <strong>not</strong> a hard contraindication to DOACs (unlike mechanical). The driver is whether the patient has <strong>AF</strong> (most common scenario in stroke patients) and how old the valve is. <strong>RIVER (2020)</strong> showed rivaroxaban non-inferior to warfarin in bioprosthetic mitral + AF. <strong>ENVISAGE-TAVI AF (2021)</strong> showed edoxaban non-inferior to VKA after TAVR with AF. <strong>GALILEO (2020)</strong>: routine rivaroxaban after TAVR <em>without</em> AF caused harm — do NOT empirically anticoagulate post-TAVR if no AF.',
+    },
+    rx: { label: 'Treatment', rx: 'AF + bioprosthetic (≥3 mo old): <em>DOAC</em> (apixaban / rivaroxaban / edoxaban) per ELAN-guided timing · No AF: <em>ASA 81 mg</em> long-term · Surgical bioprosthetic in first 3 mo: <em>warfarin INR 2–3</em> (or ASA per surgeon)', detail: 'Mitral position has higher thromboembolic risk than aortic. TAVR without AF: ASA 81 mg monotherapy (POPular TAVI / GALILEO). DAPT no longer routine post-TAVR.' },
+    nextSteps: [
+      'TTE / TEE — confirm valve function, rule out leaflet thrombosis (HALT) or vegetation',
+      'Telemetry ≥24h — capture occult AF (if AF found, full DOAC anticoagulation indicated)',
+      'Document valve position (aortic vs mitral), type (surgical vs TAVR), and date of placement',
+      'CTA / MRA for vessel imaging — bioprosthetic stroke patients often have concurrent atherosclerosis',
+      'If AF: start DOAC per ELAN timing (<48h mild–moderate, day 6–7 major)',
+      'If no AF and TAVR: ASA 81 mg monotherapy (per POPular TAVI)',
+      'If no AF and surgical bio + valve <3 mo old: warfarin to INR 2–3 (per ACC/AHA), then transition to ASA',
+      'High-intensity statin per vascular risk · BP <130/80 · A1c <7',
+      'PT / OT / SLP',
+    ],
+    watchOut: [
+      '<strong>Bioprosthetic ≠ mechanical</strong> — DOACs are OK (RIVER, ENVISAGE-TAVI AF) — do not reflexively use warfarin',
+      '<strong>GALILEO lesson</strong>: empiric rivaroxaban after TAVR without AF caused excess death and bleeding — don\'t do it',
+      'Consider <strong>subclinical leaflet thrombosis (HALT / RLM)</strong> on 4D-CT if recurrent embolic events with normal TTE',
+      'Mitral bio carries higher embolic risk than aortic — lower threshold for AC even without AF if other risk factors',
+      'First 3 months post-surgical bio are highest-risk thrombotic window — institutional protocols vary',
+      'Endocarditis risk persists for life — fevers + new murmur → blood cx + TEE',
+    ],
+    trials: ['ELAN'],
+  },
+
+  card_thromb: {
+    label: 'LV thrombus',
+    title: 'LV thrombus / recent MI / low EF',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Cardioembolic · LV thrombus',
+      title: 'Anticoagulate × 3–6 months, then reassess',
+      summary: 'For confirmed LV thrombus, anticoagulate. <strong>Warfarin</strong> historically standard; DOACs increasingly used (no RCT-level evidence but reasonable). Repeat imaging at 3 months.',
+    },
+    rx: { label: 'Treatment', rx: '<em>Warfarin INR 2–3</em> (or apixaban 5 mg BID off-label) ×3–6 mo · ASA continued if recent MI/PCI', detail: 'Coordinate antiplatelet duration with cardiology if dual stent therapy in play.' },
+    nextSteps: [
+      'TTE with contrast (definity) to characterize LV thrombus / EF',
+      'Cardiology consult — coordinate AC + DAPT if recent PCI',
+      'Repeat TTE at 3 months; can stop AC if resolved & EF recovered',
+      'High-intensity statin · BB + ACE-I for HFrEF · A1c <7',
+      'PT / OT / SLP',
+    ],
+    watchOut: [
+      'Triple therapy bleeding risk — minimize duration',
+      'Don\'t stop early if thrombus persists or EF still <35%',
+    ],
+    trials: [],
+  },
+
+  card_endo: {
+    label: 'Endocarditis',
+    title: 'Infective endocarditis with embolic stroke',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Cardioembolic · IE',
+      title: 'Antibiotics + ID + CT surgery — DO NOT anticoagulate',
+      summary: 'Anticoagulation in IE-associated stroke does <strong>not</strong> reduce embolism and increases hemorrhagic conversion / mycotic aneurysm rupture. Hold/avoid AC. Surgery often indicated for large vegetations or recurrent emboli.',
+    },
+    rx: { label: 'Treatment', rx: 'Empiric antibiotics per IDSA · <em>hold anticoagulation</em> · ID + CT surgery consult', detail: 'If patient was on AC for AF/valve, often held until bleed risk reassessed.' },
+    nextSteps: [
+      'Blood cx ×3 before abx',
+      'TTE → TEE for vegetation, abscess, valve dysfunction',
+      'ID consult — empiric vanc + ceftriaxone (or per local + risk factors)',
+      'CT surgery early if large vegetation, abscess, severe regurgitation, or recurrent emboli',
+      'Brain MRI to define stroke burden + look for mycotic aneurysm (CTA / MRA)',
+      'Hold AC — even in AF — until risk reassessed',
+    ],
+    watchOut: [
+      '<strong>Mycotic aneurysm</strong> — vessel imaging if any unusual location bleeds or persistent HA',
+      'Hemorrhagic conversion if AC continued',
+      'Septic emboli to other organs (spleen, kidneys) — pan-imaging if signs',
+    ],
+    trials: [],
+  },
+
+  card_other: {
+    label: 'Other cardiac',
+    title: 'Other cardiac source',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Cardioembolic · other',
+      title: 'Anticoagulate per source — coordinate with cardiology',
+      summary: 'Rheumatic MS → warfarin. NBTE (Trousseau / cancer) → LMWH. Atrial myxoma → resect.',
+    },
+    rx: { label: 'Treatment', rx: 'Source-specific anticoagulation', detail: 'Rheumatic MS → warfarin (DOAC contraindicated, INVICTUS-VKA). NBTE → LMWH. Cardiac mass → surgical resection + cardiology.' },
+    nextSteps: [
+      'TTE → TEE',
+      'Cardiology consult',
+      'Hypercoagulable workup if NBTE suspected (malignancy panel)',
+      'PT / OT / SLP',
+    ],
+    watchOut: [
+      'DOACs NOT validated in rheumatic MS — use warfarin',
+      'NBTE is a malignancy marker — image for occult cancer',
+    ],
+    trials: [],
+  },
+
+  /* ----- SMALL VESSEL / LACUNAR ----- */
+  sva: {
+    label: 'Lacunar',
+    title: 'Small-vessel (lacunar) stroke',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Small-vessel disease',
+      title: 'Antiplatelet + risk factor optimization',
+      summary: 'Classic lacunar syndromes (pure motor, pure sensory, ataxic hemiparesis, dysarthria-clumsy hand, sensorimotor) with subcortical infarct <1.5 cm. Driven by chronic HTN, DM, smoking. <strong>BP control is the single highest-yield intervention.</strong>',
+    },
+    rx: { label: 'Treatment', rx: '<em>ASA 81 mg</em> daily (or clopidogrel 75 if ASA-intolerant) · BP &lt;130/80 · atorvastatin 80 (LDL &lt;70) · A1c &lt;7', detail: 'If minor stroke (NIHSS ≤3) within 24h → DAPT × 21 days (CHANCE/POINT). Up to 72h from onset → DAPT still beneficial per INSPIRES.' },
+    nextSteps: [
+      '24h MRI to confirm subcortical infarct',
+      'CTA / MRA to rule out large-vessel pathology mimicking lacunar',
+      'TTE if clinical suspicion of cardiac source (often skipped if classic lacunar)',
+      'Lipid panel · A1c · BP optimization',
+      'High-intensity statin to LDL <70 (SPARCL)',
+      'Aggressive HTN management — ACE-I/ARB + thiazide first-line, target <130/80',
+      'Smoking cessation, lifestyle, exercise',
+      'PT / OT / SLP per deficits',
+    ],
+    watchOut: [
+      'Don\'t miss a "lacunar mimic" — small embolic infarcts can look similar',
+      'SPS3 trial: DAPT long-term for lacunar = <strong>more bleeding, no benefit</strong> — switch to mono after 21 days',
+      'Cognitive impairment risk with cumulative small-vessel burden — counsel',
+    ],
+    trials: ['CHANCE', 'POINT', 'INSPIRES', 'SPARCL'],
+  },
+
+  /* ----- OTHER DETERMINED ETIOLOGY ----- */
+  odet: {
+    label: 'Other etiology',
+    title: 'Other determined etiology — which?',
+    options: [
+      { id: 'odet-diss',   title: 'Cervical artery dissection', desc: 'Carotid or vertebral dissection.',         next: 'odet_diss' },
+      { id: 'odet-vasc',   title: 'CNS vasculitis / RCVS',       desc: 'Vasculitic vs vasoreactive picture.',     next: 'odet_vasc' },
+      { id: 'odet-hyper',  title: 'Hypercoagulable / APS',       desc: 'APS, factor V, malignancy, OCP-related.', next: 'odet_hyper' },
+      { id: 'odet-sickle', title: 'Sickle cell disease',          desc: 'HbSS with stroke.',                       next: 'odet_sickle' },
+    ],
+  },
+
+  odet_diss: {
+    label: 'Dissection',
+    title: 'Cervical artery dissection',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Other determined · dissection',
+      title: 'Antiplatelet OR anticoagulation — equipoise',
+      summary: '<strong>CADISS</strong> showed no difference between antiplatelet and anticoagulation at 3 months. Most centers use ASA × 3–6 months. Consider AC for occlusive thrombus or recurrent embolic events.',
+    },
+    rx: { label: 'Treatment', rx: '<em>ASA 81 mg</em> ×3–6 mo (or warfarin / DOAC) · BP control · avoid neck manipulation', detail: 'Re-image at 3–6 mo (CTA / MRA). If recanalized → continue ASA; if persistent occlusion → individualize.' },
+    nextSteps: [
+      'CTA neck (already done) — confirm dissection flap, intramural hematoma, pseudoaneurysm',
+      'BP <140/90 (avoid hypotension acutely)',
+      'Repeat vessel imaging at 3–6 mo',
+      'Avoid chiropractic / heavy lifting / contact sports during healing',
+      'Statin per vascular risk (not for dissection per se)',
+    ],
+    watchOut: [
+      'Pseudoaneurysm formation — surveillance imaging',
+      'Recurrent dissection in connective tissue disorders (FMD, Ehlers-Danlos) — screen if young / multiple',
+      'Don\'t routinely thrombolyse if dissection extends intracranially — bleed risk',
+    ],
+    trials: [],
+  },
+
+  odet_vasc: {
+    label: 'Vasculitis / RCVS',
+    title: 'CNS vasculitis vs RCVS',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Other determined · inflammatory / vasoreactive',
+      title: 'Distinguish primary CNS vasculitis from RCVS — they are treated very differently',
+      summary: '<strong>RCVS</strong> = thunderclap HA, "string of beads" on angio that resolves in 1–3 mo, often postpartum / vasoactive drug exposure → CCB + remove triggers. <strong>PCNSV</strong> = subacute, leptomeningeal enhancement, brain biopsy gold standard → high-dose steroids + cyclophosphamide.',
+    },
+    rx: { label: 'Treatment', rx: 'RCVS: <em>nimodipine 30–60 mg q4h</em> + remove triggers · PCNSV: <em>methylprednisolone 1 g ×5d</em> → prednisone + cyclophosphamide', detail: 'LP, vessel imaging, sometimes brain + meningeal biopsy. Rheum + neurology co-management.' },
+    nextSteps: [
+      'CTA / MRA / DSA — characterize vessel pattern',
+      'LP — protein, cells, oligoclonal bands (high in PCNSV)',
+      'ESR / CRP / ANCA / ANA / hepatitis serologies / HIV',
+      'Repeat angio at 12 weeks — RCVS resolves; PCNSV does not',
+      'Rheumatology consult',
+    ],
+    watchOut: [
+      'Don\'t give steroids to RCVS empirically — can worsen',
+      'RCVS can have ICH / SAH (cortical convexity SAH classic)',
+      'Triggers: SSRIs, triptans, cocaine, pseudoephedrine, postpartum',
+    ],
+    trials: [],
+  },
+
+  odet_hyper: {
+    label: 'Hypercoagulable',
+    title: 'Hypercoagulable state',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Other determined · prothrombotic',
+      title: 'Anticoagulate — etiology-specific',
+      summary: 'APS → <strong>warfarin</strong> (DOACs failed in TRAPS). Cancer-associated → LMWH initially, DOAC reasonable per CARAVAGGIO logic. Inherited thrombophilia rarely causes arterial stroke — search hard for alternative etiology before attributing.',
+    },
+    rx: { label: 'Treatment', rx: 'APS triple-positive: <em>warfarin INR 2–3</em>. Cancer: <em>LMWH</em> or DOAC. Inherited: usually antiplatelet unless venous component.', detail: 'Workup: APS panel ×2 (12 wk apart), factor V Leiden, prothrombin gene, protein C/S, antithrombin, homocysteine, malignancy screen.' },
+    nextSteps: [
+      'Antiphospholipid antibody panel (lupus AC, β2GP1, ACL) — repeat in 12 wk',
+      'CBC, smear, JAK2 (myeloproliferative), age-appropriate cancer screening',
+      'TTE / TEE — rule out NBTE (cancer) or Libman-Sacks (APS)',
+      'Hematology consult',
+    ],
+    watchOut: [
+      'Don\'t use DOACs in triple-positive APS (TRAPS halted early — harm)',
+      'Inherited thrombophilia rarely arterial — keep looking',
+      'NBTE in cancer mimics endocarditis — culture-negative',
+    ],
+    trials: [],
+  },
+
+  odet_sickle: {
+    label: 'SCD',
+    title: 'Sickle cell disease',
+    terminal: true,
+    verdict: {
+      eyebrow: 'Other determined · SCD',
+      title: 'Exchange transfusion + chronic transfusion program',
+      summary: '<strong>STOP / STOP-2</strong>: chronic transfusion to keep HbS <30% reduces recurrent stroke. Acute: exchange transfusion. Long-term: hydroxyurea, transfusions, ± HSCT.',
+    },
+    rx: { label: 'Treatment', rx: 'Acute: <em>exchange transfusion</em> to HbS <30% · long-term: chronic transfusion program ± hydroxyurea', detail: 'TCD screening for primary prevention in pediatric SCD. Adults: hematology-driven.' },
+    nextSteps: [
+      'Hematology consult — exchange transfusion within hours',
+      'TCD ultrasound (children); MRA in adults',
+      'Hydroxyurea / chronic transfusion program',
+      'Iron monitoring (transfusion-related overload)',
+      'PCV / influenza / meningococcal vaccinations up to date',
+    ],
+    watchOut: [
+      'Standard antiplatelet alone is inadequate',
+      'Iron overload from chronic transfusion — chelation as needed',
+    ],
+    trials: [],
+  },
+
+  /* ----- ESUS / CRYPTOGENIC ----- */
+  esus: {
+    label: 'ESUS',
+    title: 'Embolic Stroke of Undetermined Source',
+    help: 'After CTA + TTE + ≥24h telemetry, no source found. Decide: extend monitoring, look for PFO, consider age-stratified PFO closure.',
+    options: [
+      { id: 'esus-young', title: 'Age <60 with PFO + high-risk features', desc: 'Atrial septal aneurysm, large shunt, RoPE high.', next: 'esus_pfo' },
+      { id: 'esus-old',   title: 'Age ≥60 or no PFO',                      desc: 'Extended cardiac monitoring + risk factor optimization.', next: 'esus_extended' },
+    ],
+  },
+
+  esus_pfo: {
+    label: 'PFO closure',
+    title: 'Cryptogenic stroke + high-risk PFO, age <60',
+    terminal: true,
+    verdict: {
+      eyebrow: 'ESUS · PFO',
+      title: 'PFO closure beats antiplatelet alone in selected patients',
+      summary: '<strong>RESPECT / CLOSE / REDUCE</strong> showed benefit of percutaneous closure for non-lacunar cryptogenic stroke <60 with shunt or atrial septal aneurysm. Use <strong>RoPE score</strong> to estimate likelihood PFO is causal.',
+    },
+    rx: { label: 'Treatment', rx: '<em>Percutaneous PFO closure</em> + ASA 81 mg', detail: 'Cardiology / interventional referral. Peri-procedure antiplatelet per operator.' },
+    nextSteps: [
+      'TEE with bubble study to characterize shunt + ASA',
+      'RoPE score calculation',
+      'Cardiology consult for closure planning',
+      'Age <60 + non-lacunar + no other source = candidate',
+      'Continue ASA + statin + risk factor optimization',
+    ],
+    watchOut: [
+      'New-onset AF risk after closure (~5%) — counsel + monitor',
+      'Don\'t close in age >60 routinely — benefit unclear',
+      'Look harder for AF before defaulting to PFO closure',
+    ],
+    trials: [],
+  },
+
+  esus_extended: {
+    label: 'Extended monitor',
+    title: 'ESUS — extended monitoring + medical optimization',
+    terminal: true,
+    verdict: {
+      eyebrow: 'ESUS · cryptogenic',
+      title: 'Long-term monitoring for occult AF · ASA monotherapy',
+      summary: '<strong>NAVIGATE-ESUS</strong> and <strong>RE-SPECT ESUS</strong>: empiric anticoagulation for ESUS does not beat aspirin and increases bleeding. Hunt for AF instead — implantable loop recorder if high suspicion.',
+    },
+    rx: { label: 'Treatment', rx: '<em>ASA 81 mg</em> + high-intensity statin · BP <130/80 · A1c <7 · extended cardiac monitor 14–30d (or implantable loop)', detail: 'Switch to AC ONLY if AF detected.' },
+    nextSteps: [
+      'Outpatient mobile cardiac telemetry 14–30 days OR implantable loop recorder',
+      'TEE with bubble if not done — exclude PFO, aortic atheroma, LAA thrombus',
+      'CT chest / abdomen-pelvis if malignancy suspected (NBTE)',
+      'High-intensity statin · LDL <70',
+      'BP <130/80 · A1c <7',
+      'Lifestyle / diet / smoking cessation',
+    ],
+    watchOut: [
+      'Empirical DOAC for ESUS = NOT supported (NAVIGATE / RE-SPECT)',
+      'Yield of AF detection rises with monitor duration — don\'t stop at 24h',
+      'Reconsider differential if recurrent — vasculitis, hypercoag, NBTE',
+    ],
+    trials: [],
+  },
+
+  /* ===================================================================
+     TIA
+     =================================================================== */
+  tia: {
+    label: 'TIA',
+    title: 'TIA — risk stratify',
+    help: '<strong>ABCD² score</strong>: Age ≥60 (1), BP ≥140/90 (1), Clinical (unilateral weakness 2, speech w/o weakness 1), Duration (≥60min 2, 10–59min 1), Diabetes (1). High risk = ≥4.',
+    options: [
+      { id: 'tia-high', title: 'High-risk TIA (ABCD² ≥4) or minor stroke (NIHSS ≤3)', desc: 'CHANCE / POINT eligible.', next: 'tia_high' },
+      { id: 'tia-low',  title: 'Lower-risk TIA',                                       desc: 'ABCD² <4, brief sensory only, etc.', next: 'tia_low' },
+    ],
+  },
+
+  tia_high: {
+    label: 'High-risk TIA',
+    title: 'High-risk TIA / minor stroke — DAPT',
+    terminal: true,
+    verdict: {
+      eyebrow: 'TIA · high risk · NIHSS ≤5',
+      title: 'CHANCE / POINT / INSPIRES protocol',
+      summary: 'Within 24h → <strong>clopidogrel + ASA × 21 days</strong> then clopidogrel mono through day 90 (CHANCE / POINT, NIHSS ≤3 or ABCD² ≥4). <strong>INSPIRES</strong> extended this benefit to patients presenting up to <strong>72h</strong> from onset. <strong>THALES</strong> showed ticagrelor + ASA × 30 d also reduces stroke/death in NIHSS ≤5 (more bleeding). For NIHSS ≤5 within 4.5h who would otherwise get tPA, <strong>ARAMIS / PRISMS</strong> showed DAPT/ASA load is comparable with less sICH.',
+    },
+    rx: { label: 'Treatment', rx: '<em>Clopidogrel 300–600 mg load → 75 mg/day</em> + <em>ASA 81 mg</em> × 21 days, then clopidogrel mono through day 90', detail: 'CYP2C19 LOF carrier → ticagrelor + ASA (CHANCE-2). Window: 24h (CHANCE/POINT) or up to 72h (INSPIRES).' },
+    nextSteps: [
+      'MRI brain w/ DWI within 24h — confirm true TIA vs minor infarct',
+      'CTA neck + head — vessel imaging is mandatory in TIA',
+      'TTE · ≥24h telemetry',
+      'Lipid panel · A1c · atorvastatin 80 (LDL <70 — SPARCL)',
+      'BP <130/80 (ACE-I/ARB)',
+      'Smoking cessation, lifestyle',
+      'Discharge usually possible if workup complete &amp; patient stable — 90-day DAPT plan in hand',
+    ],
+    watchOut: [
+      'Don\'t exceed 21 days DAPT — POINT bleeding signal',
+      'CYP2C19 testing if recurrent event on clopidogrel',
+      '"Capsular warning syndrome" = stuttering lacunar TIAs — treat aggressively',
+      'Always rule out cardioembolic source before defaulting to DAPT',
+    ],
+    trials: ['CHANCE', 'POINT', 'INSPIRES', 'THALES', 'ARAMIS', 'PRISMS', 'SPARCL'],
+  },
+
+  tia_low: {
+    label: 'Lower-risk TIA',
+    title: 'Lower-risk TIA',
+    terminal: true,
+    verdict: {
+      eyebrow: 'TIA · lower risk',
+      title: 'ASA monotherapy + secondary prevention',
+      summary: 'For ABCD² &lt;4 or atypical brief events without imaging correlate, full TIA workup remains essential — but DAPT trials were powered in higher-risk patients.',
+    },
+    rx: { label: 'Treatment', rx: '<em>ASA 81 mg</em> daily · atorvastatin 80 (LDL &lt;70) · BP &lt;130/80 · A1c &lt;7', detail: 'If etiology found (e.g., AF, carotid stenosis), shift to mechanism-specific therapy.' },
+    nextSteps: [
+      'MRI w/ DWI · CTA neck + head · TTE · telemetry',
+      'Lipid + A1c · atorvastatin 80 (LDL <70 — SPARCL)',
+      'BP <130/80, lifestyle',
+      'Reassess if higher-risk features emerge',
+    ],
+    watchOut: [
+      'Don\'t under-investigate — even low-ABCD² TIAs need vessel + cardiac workup',
+      'Reclassify as high-risk if MRI shows infarct',
+    ],
+    trials: ['CHANCE', 'POINT', 'SPARCL'],
+  },
+
+  /* ===================================================================
+     ICH
+     =================================================================== */
+  ich: {
+    label: 'ICH',
+    title: 'Spontaneous ICH — what is the priority?',
+    help: 'AHA/ESO 2026: bundled care saves lives. INTERACT-3 showed care bundle (BP, glucose, temp, anticoag reversal) improves outcomes. Get neurosurgery on the phone early.',
+    options: [
+      { id: 'ich-bp',     title: 'BP / hyperacute bundle',          desc: 'INTERACT-3 protocol, target SBP ~140.',     next: 'ich_bp' },
+      { id: 'ich-acrev',  title: 'Anticoagulant-associated ICH',     desc: 'Reverse based on agent — warfarin / DOAC / heparin.', next: 'ich_acrev' },
+      { id: 'ich-surg',   title: 'Surgical evaluation',              desc: 'Cerebellar bleed, large lobar, hydrocephalus.', next: 'ich_surg' },
+    ],
+  },
+
+  ich_bp: {
+    label: 'BP bundle',
+    title: 'ICH care bundle (INTERACT-3)',
+    terminal: true,
+    verdict: {
+      eyebrow: 'ICH · acute bundle',
+      title: 'Target SBP ~140 · normalize glucose, temp · reverse AC',
+      summary: '<strong>INTERACT-3</strong> bundle: SBP <140 within 1 hr, glucose 6.1–7.8 mmol/L, temp <37.5°C, anticoagulant reversal within 1 hr. <strong>ATACH-2</strong> showed pushing SBP <130 doesn\'t help and harms kidneys. Sweet spot ≈ 140.',
+    },
+    rx: { label: 'Treatment', rx: '<em>SBP 130–150</em> (avoid <130) · nicardipine or clevidipine drip · glucose 6.1–7.8 · temp <37.5', detail: 'Avoid hypotension. Repeat NCHCT at 6–24h or for any neuro change.' },
+    nextSteps: [
+      'NCHCT — measure ICH volume (ABC/2)',
+      'CTA — spot sign? underlying lesion (AVM, aneurysm, tumor)?',
+      'BP drip — nicardipine or clevidipine, target SBP ~140',
+      'Reverse anticoagulants (see AC reversal node)',
+      'Neurosurgery consult — EVD if hydrocephalus, evacuate if cerebellar >3 cm',
+      'ICU admission · q1h neuro checks',
+      'DVT ppx: SCDs immediately, LMWH after 24–48h if stable',
+      'PT / OT / SLP early once stable',
+      'Avoid early antiplatelet — RESTART showed it\'s safe to resume later if indicated',
+    ],
+    watchOut: [
+      'SBP <130 → AKI without outcome benefit (ATACH-2)',
+      '<strong>Hematoma expansion</strong> in first 24h — re-image with any decline',
+      'Spot sign on CTA = high expansion risk',
+      'Seizures in lobar ICH — consider levetiracetam if cortical involvement',
+    ],
+    trials: [],
+  },
+
+  ich_acrev: {
+    label: 'AC reversal',
+    title: 'Anticoagulant-associated ICH — reverse',
+    terminal: true,
+    verdict: {
+      eyebrow: 'ICH · anticoagulant-associated',
+      title: 'Reverse within the hour — agent-specific',
+      summary: '<strong>Warfarin</strong>: 4F-PCC + IV vit K. <strong>Apixaban / rivaroxaban</strong>: andexanet alfa or 4F-PCC. <strong>Dabigatran</strong>: idarucizumab. <strong>Heparin</strong>: protamine.',
+    },
+    rx: { label: 'Treatment', rx: 'Warfarin: <em>4F-PCC 25–50 U/kg</em> + vit K 10 mg IV · Apix/Riva: <em>andexanet</em> or 4F-PCC 50 U/kg · Dabig: <em>idarucizumab 5 g</em> · Heparin: <em>protamine</em>', detail: 'INR target after warfarin reversal: <1.4. Document time of last dose for DOACs.' },
+    nextSteps: [
+      'Hold all anticoagulants',
+      'INR / PT / PTT / fibrinogen / type & screen',
+      'Reverse per agent',
+      'Neurosurgery consult',
+      '6–24h repeat NCHCT',
+      'Continue ICH bundle (BP, glucose, temp)',
+      'Restart AC discussion at 1–4 weeks for high-risk indications (mech valve, large LV thrombus) — individualize',
+    ],
+    watchOut: [
+      'Andexanet ↑ thrombotic events vs PCC (ANNEXA-I) — institutional protocol',
+      'Don\'t give FFP for warfarin reversal (slower, volume overload) — PCC preferred',
+      'Idarucizumab is dabigatran-specific',
+      'Mechanical valve patient: hardest decision — usually restart AC by 1–2 wk',
+    ],
+    trials: [],
+  },
+
+  ich_surg: {
+    label: 'Surgery',
+    title: 'Surgical considerations in ICH',
+    terminal: true,
+    verdict: {
+      eyebrow: 'ICH · neurosurgical',
+      title: 'Operate for cerebellar / hydrocephalus / select lobar bleeds',
+      summary: 'Cerebellar ICH >3 cm OR brainstem compression OR hydrocephalus → <strong>posterior fossa decompression</strong>. Hydrocephalus → <strong>EVD</strong>. Lobar ICH 30–80 mL → consider <strong>MIS evacuation per ENRICH (2024)</strong>.',
+    },
+    rx: { label: 'Treatment', rx: 'Cerebellar >3 cm or compressing brainstem: <em>suboccipital decompression</em> · Hydrocephalus: <em>EVD</em> · Lobar 30–80 mL: <em>MIS evacuation</em> (ENRICH)', detail: 'STICH / STICH-II: routine evacuation of supratentorial deep ICH not beneficial.' },
+    nextSteps: [
+      'Neurosurgery STAT consult',
+      'EVD for hydrocephalus / IVH',
+      'Repeat NCHCT after intervention',
+      'ICU · ICP monitoring as indicated',
+      'Standard ICH bundle continued (BP, glucose, temp)',
+    ],
+    watchOut: [
+      'Cerebellar bleeds can deteriorate quickly — low threshold to operate',
+      'Don\'t operate on routine deep supratentorial ICH (basal ganglia / thalamus) — STICH negative',
+      'IVH burden predicts hydrocephalus — get EVD early if score high',
+    ],
+    trials: [],
+  },
+
+  /* ===================================================================
+     SAH
+     =================================================================== */
+  sah: {
+    label: 'SAH',
+    title: 'Subarachnoid hemorrhage',
+    help: 'Aneurysmal until proven otherwise. CTA → DSA if negative. Hunt-Hess + modified Fisher grading drive prognosis.',
+    options: [
+      { id: 'sah-acute',  title: 'Acute management & aneurysm securing', desc: 'BP, nimodipine, secure aneurysm <24h.', next: 'sah_acute' },
+      { id: 'sah-vaso',   title: 'Vasospasm prevention / management',     desc: 'Days 4–14 post-bleed.',                next: 'sah_vaso' },
+    ],
+  },
+
+  sah_acute: {
+    label: 'Acute SAH',
+    title: 'Acute aneurysmal SAH',
+    terminal: true,
+    verdict: {
+      eyebrow: 'SAH · acute',
+      title: 'Secure the aneurysm within 24h',
+      summary: '<strong>ISAT</strong>: coiling preferred over clipping when both feasible. Pre-securing: keep SBP <140–160. Start <strong>nimodipine 60 mg PO q4h × 21 days</strong> for all aneurysmal SAH (vasospasm prevention).',
+    },
+    rx: { label: 'Treatment', rx: '<em>Nimodipine 60 mg q4h × 21 d</em> · SBP <140–160 pre-securing · <em>endovascular coiling</em> (or clipping) <24h', detail: 'Hunt-Hess grade + modified Fisher → prognosis & vasospasm risk.' },
+    nextSteps: [
+      'NCHCT → confirm SAH; if negative + high suspicion → LP for xanthochromia',
+      'CTA — locate aneurysm; DSA if CTA negative',
+      'Neurosurgery / neuro-IR STAT consult',
+      'ICU · neuro checks q1h',
+      'Nimodipine 60 mg q4h ×21 d (do NOT skip)',
+      'BP control: SBP <140–160 pre-securing; liberalize after',
+      'Glucose / temp / Na+ control',
+      'EVD if hydrocephalus',
+      'Daily TCDs from day 3 — surveillance for vasospasm',
+      'DVT ppx: SCDs immediately, pharm after aneurysm secured',
+    ],
+    watchOut: [
+      '<strong>Rebleed</strong> peak in first 24h — secure ASAP',
+      '<strong>Hyponatremia</strong> (SIADH or cerebral salt wasting) — common days 3–7',
+      'Hydrocephalus → EVD',
+      'Cardiac troponin + Takotsubo/neurogenic stunning — get TTE',
+      'Sentinel HA in days–weeks prior — ask family',
+    ],
+    trials: [],
+  },
+
+  sah_vaso: {
+    label: 'Vasospasm',
+    title: 'Vasospasm management (post-bleed days 4–14)',
+    terminal: true,
+    verdict: {
+      eyebrow: 'SAH · vasospasm',
+      title: 'Induced hypertension first · IA therapy if refractory',
+      summary: 'Suspect on TCDs (rising velocities), CTA, or new neuro deficit. <strong>Triple-H abandoned</strong> — current standard is <strong>induced hypertension + euvolemia</strong>. IA verapamil / angioplasty for refractory.',
+    },
+    rx: { label: 'Treatment', rx: '<em>Induced HTN</em> (norepi to MAP goal) + <em>euvolemia</em> · IA verapamil / balloon angioplasty if refractory', detail: 'Continue nimodipine throughout. Statin role inconclusive (STASH negative).' },
+    nextSteps: [
+      'Daily TCDs through day 14',
+      'CTA / CT perfusion if new deficit',
+      'Norepi to push MAP up to symptom resolution',
+      'Maintain euvolemia (avoid hypovolemia AND fluid overload)',
+      'Neuro-IR for IA therapy if refractory',
+      'Continue nimodipine ×21 d',
+      'Watch Na+, glucose, temp',
+    ],
+    watchOut: [
+      'Triple-H is OUT — don\'t hyper-hydrate',
+      'Vasospasm peaks days 7–10',
+      'DCI (delayed cerebral ischemia) is the most preventable cause of bad outcome',
+    ],
+    trials: [],
+  },
+
+  /* ===================================================================
+     CVST
+     =================================================================== */
+  cvst: {
+    label: 'CVST',
+    title: 'Cerebral venous sinus thrombosis',
+    terminal: true,
+    verdict: {
+      eyebrow: 'CVST',
+      title: 'Anticoagulate — even with hemorrhagic infarct',
+      summary: 'Anticoagulation reduces propagation and improves outcomes <strong>even when hemorrhagic infarct present</strong>. <strong>RE-SPECT CVT (2023)</strong>: dabigatran non-inferior to warfarin. ASA ineffective. Consider thrombectomy in TO-ACT-eligible severe cases.',
+    },
+    rx: { label: 'Treatment', rx: '<em>LMWH</em> (enoxaparin 1 mg/kg q12h) acute → transition to <em>warfarin or DOAC</em> ×3–12 mo', detail: 'Duration: 3 mo if provoked, 6–12 mo if unprovoked, indefinite if recurrent or thrombophilia.' },
+    nextSteps: [
+      'MRV or CTV — confirm thrombus, identify involved sinuses',
+      'LMWH start (even with hemorrhagic component)',
+      'Hypercoagulable workup: APS, factor V Leiden, prothrombin gene, protein C/S, antithrombin, JAK2',
+      'OCP / pregnancy / postpartum / dehydration / infection / malignancy review',
+      'EEG if seizures (occur in ~40%)',
+      'ICP management if elevated — acetazolamide, LP, sometimes shunt',
+      'Transition to oral AC (DOAC reasonable per RE-SPECT CVT)',
+      'Repeat MRV at 3–6 mo for recanalization',
+    ],
+    watchOut: [
+      'Don\'t withhold AC due to hemorrhagic transformation — still indicated',
+      'Vision loss (papilledema) — ophtho check',
+      'VITT / heparin-induced if recent vaccine — use non-heparin AC',
+      'Seizures common — low threshold for EEG',
+    ],
+    trials: [],
+  },
+
+  /* ===================================================================
+     CRAO
+     =================================================================== */
+  crao: {
+    label: 'CRAO',
+    title: 'Central retinal artery occlusion',
+    terminal: true,
+    verdict: {
+      eyebrow: 'CRAO · stroke equivalent',
+      title: 'Treat as a stroke — workup, secondary prevention; do NOT routinely give IA tPA',
+      summary: 'CRAO is a stroke equivalent: vessel imaging, cardiac workup, vascular risk-factor optimization. <strong>EAGLE (2010)</strong> showed local intra-arterial fibrinolysis offered <em>no benefit over conservative care</em> with substantially more adverse events (37% vs 4%) — IA fibrinolysis is NOT recommended. IV tPA within the standard 4.5-h window is sometimes considered at experienced centers but evidence is mixed.',
+    },
+    rx: { label: 'Treatment', rx: 'Conservative supportive care · full stroke workup · ASA 81 mg · atorvastatin 80 (LDL &lt;70) · BP &lt;130/80', detail: 'Ophtho: ocular massage, anterior chamber paracentesis, IOP-lowering — limited evidence. Consider IV tPA within 4.5h at select centers; do NOT do IA fibrinolysis (EAGLE).' },
+    nextSteps: [
+      'Ophthalmology consult — bedside fundoscopy / OCT',
+      'STAT MRI brain — concomitant cerebral ischemia in up to 25%',
+      'CTA neck + head — high yield for ipsilateral carotid disease',
+      'TTE · ≥24h telemetry · lipids · A1c',
+      'ASA 81 mg · atorvastatin 80 (LDL <70 — SPARCL)',
+      'BP <130/80 · A1c <7 · smoking cessation',
+      'GCA workup if age ≥50: ESR, CRP, temporal artery biopsy if suspicious',
+    ],
+    watchOut: [
+      '<strong>Do NOT do IA fibrinolysis</strong> (EAGLE — negative trial)',
+      'Don\'t miss giant cell arteritis — vision-threatening, treatable',
+      'High prevalence of carotid disease — image vessels in everyone',
+      'CRAO carries similar long-term vascular event risk as cerebral stroke',
+    ],
+    trials: ['EAGLE', 'SPARCL', 'CHANCE'],
+  },
+
+};
+
+/* ===================================================================
+   PMH-DRIVEN NOTES (shown at terminal nodes if relevant flags toggled)
+   =================================================================== */
+function pmhNotes() {
+  const notes = [];
+  if (pmhState.afib) {
+    notes.push({ when: ['esus_extended', 'sva', 'tia_low', 'tia_high'], text: 'Patient has known AF — reconsider this etiology as cardioembolic. Strong indication for anticoagulation over antiplatelet.' });
+  }
+  if (pmhState.priorcva) {
+    notes.push({ when: '*', text: '<strong>Prior stroke / TIA</strong> raises baseline recurrence risk. Verify prior etiology, prior antithrombotic adherence, and intensify modifiable risk factors (LDL <55 may be appropriate for very-high-risk per AHA 2026).' });
+  }
+  if (pmhState.dm && pmhState.htn) {
+    notes.push({ when: ['sva', 'tia_high', 'tia_low', 'lvd_carotid_sx', 'lvd_icad', 'esus_extended'], text: 'HTN + DM combo — pillar of small-vessel disease. Aggressive BP (<130/80) and glycemic control (A1c <7) yield more event reduction than antithrombotic choice alone.' });
+  }
+  if (pmhState.cad) {
+    notes.push({ when: '*', text: 'CAD — use high-intensity statin (atorva 80 / rosuva 40), LDL goal <55. ACS history affects DAPT/AC layering — coordinate with cardiology.' });
+  }
+  if (pmhState.chf) {
+    notes.push({ when: ['esus_extended', 'card_thromb'], text: 'HFrEF — increases LV thrombus risk; TTE with contrast helpful. GDMT (BB, ACE-I/ARB or ARNI, MRA, SGLT2i) is part of stroke prevention.' });
+  }
+  if (pmhState.smoke) {
+    notes.push({ when: '*', text: 'Active smoker — single largest modifiable risk after BP. Counseling + nicotine replacement + varenicline before discharge.' });
+  }
+  if (pmhState.osa) {
+    notes.push({ when: '*', text: 'OSA — independent stroke risk + worsens AF/HTN. Sleep medicine referral, polysomnography, CPAP.' });
+  }
+  if (pmhState.ckd) {
+    notes.push({ when: ['card_af'], text: 'CKD — adjust DOAC dosing. Apixaban most data in advanced CKD; dabigatran avoided if CrCl <30. Warfarin acceptable.' });
+  }
+  if (pmhState.cancer) {
+    notes.push({ when: ['esus_extended', 'odet_hyper'], text: 'Active malignancy — consider Trousseau / NBTE. LMWH commonly preferred; DOAC reasonable for many solid tumors per CARAVAGGIO logic.' });
+  }
+  if (pmhState.preg) {
+    notes.push({ when: '*', text: 'Pregnancy / postpartum — RCVS / CVST rise. Avoid warfarin in pregnancy (teratogenic 6–12 wk); LMWH preferred. Postpartum: anticoagulant choice less restricted.' });
+  }
+  if (pmhState.pfo) {
+    notes.push({ when: ['esus_extended', 'esus_pfo'], text: 'Known PFO — characterize shunt size, atrial septal aneurysm, RoPE score. Closure for cryptogenic stroke <60 with high-risk features.' });
+  }
+  return notes;
+}
+
+/* ===================================================================
+   MRI-DRIVEN NOTES
+   =================================================================== */
+function mriNotes() {
+  const notes = [];
+  const isIschemic = (cur) => ![
+    'ich_bp','ich_acrev','ich_surg','sah_acute','sah_vaso','cvst'
+  ].includes(cur);
+  const isICH = (cur) => ['ich_bp','ich_acrev','ich_surg'].includes(cur);
+
+  // Multiple territories — strong embolic signal
+  if (mriState.acute_multi_terr) {
+    notes.push({ when: ['sva','lvd_icad','lvd_vert','esus_extended','tia_high','tia_low'],
+      text: '<strong>MRI: multiple acute infarcts in multiple territories</strong> — strongly favors a proximal embolic source (cardioembolic, aortic arch, or hypercoagulable). If etiology unclear, lower threshold for TEE, bubble study, extended cardiac monitoring (loop), and malignancy/hypercoag workup.' });
+  }
+  // Multiple same territory — embolic shower or LVO with distal fragments
+  if (mriState.acute_multi_same) {
+    notes.push({ when: ['sva','lvd_carotid_sx','lvd_carotid_asx'],
+      text: '<strong>MRI: multiple acute infarcts in one territory</strong> — suggests artery-to-artery embolic shower from proximal source. Image the parent vessel carefully; consider plaque imaging or HR-VWI.' });
+  }
+  // Cortical involvement contradicts lacunar
+  if (mriState.cortical) {
+    notes.push({ when: ['sva'],
+      text: '<strong>Cortical involvement on MRI</strong> is incompatible with a pure lacunar etiology — re-examine for embolic source (cardioembolic, large-artery, ESUS).' });
+  }
+  // Hemorrhagic transformation
+  if (mriState.ht) {
+    notes.push({ when: '*',
+      text: '<strong>Hemorrhagic transformation</strong> — delay antithrombotic / anticoagulant initiation, re-image at 24–72h, and individualize timing. For AF, push DOAC start toward late end of ELAN windows.' });
+  }
+  // Chronic infarct + WMD — accumulated cerebrovascular burden
+  if (mriState.chronic_infarct || mriState.wmd) {
+    notes.push({ when: ['sva','tia_high','tia_low','esus_extended','lvd_carotid_sx','lvd_icad','lvd_vert'],
+      text: '<strong>Chronic infarcts / WM disease burden</strong> on MRI — high recurrent event risk. Intensify secondary prevention (LDL <55 for very high risk per AHA 2026), aggressive BP <130/80, vascular cognitive impairment counseling.' });
+  }
+  // Lobar microbleeds — CAA suggestive
+  if (mriState.cmb_lobar) {
+    notes.push({ when: '*',
+      text: '<strong>Strictly lobar microbleeds</strong> — suggestive of cerebral amyloid angiopathy (run Boston Criteria 2.0 calculator). Implication: substantially elevated ICH risk on antithrombotic / AC. Document risk-benefit explicitly; favor antiplatelet over AC where reasonable; avoid combining antiplatelets.' });
+  }
+  // Cortical superficial siderosis — CAA-defining
+  if (mriState.css) {
+    notes.push({ when: '*',
+      text: '<strong>Cortical superficial siderosis</strong> on GRE/SWI is a CAA-defining finding (Boston v2). Disseminated siderosis carries the highest recurrent ICH risk in CAA. Strong bias against anticoagulation and even antiplatelet for primary prevention.' });
+  }
+  // Deep microbleeds — hypertensive small vessel disease
+  if (mriState.cmb_deep) {
+    notes.push({ when: ['sva','lvd_icad','ich_bp','ich_acrev','ich_surg'],
+      text: '<strong>Deep microbleeds</strong> (basal ganglia / thalamus / brainstem / cerebellum) — hypertensive arteriolopathy. BP control is the dominant intervention; modifiable factor.' });
+  }
+  // ICH + lobar microbleeds → high CAA suspicion
+  if (mriState.cmb_lobar && isICH) {
+    notes.push({ when: ['ich_bp','ich_acrev','ich_surg'],
+      text: '<strong>Lobar ICH + lobar microbleeds</strong> → high suspicion for CAA. Restarting any antithrombotic carries substantial recurrence risk. RESTART data are limited in CAA-pattern bleeds; weigh individual indication carefully.' });
+  }
+  return notes;
+}
+
+/* ===================================================================
+   AGE-DRIVEN NOTES
+   =================================================================== */
+function ageNotes() {
+  const notes = [];
+  if (ageState === null) return notes;
+  const a = ageState;
+  if (a < 60) {
+    notes.push({ when: ['esus_extended','esus_pfo','odet_diss','odet_vasc','odet_hyper'],
+      text: `<strong>Age ${a}</strong> — young stroke. Broaden workup: PFO with bubble TEE (RoPE score), hypercoagulable panel (APS, factor V, prothrombin, protein C/S, homocysteine), vasculitis labs, illicit drug screen, dissection on vessel imaging. RESPECT/CLOSE/REDUCE closure window for cryptogenic + PFO is age <60.` });
+  }
+  if (a < 70) {
+    notes.push({ when: ['lvd_carotid_sx','lvd_carotid_asx'],
+      text: `<strong>Age ${a} (&lt;70)</strong> — per CREST, CAS (stenting) favored over CEA in this age band when revascularization indicated.` });
+  } else {
+    notes.push({ when: ['lvd_carotid_sx','lvd_carotid_asx'],
+      text: `<strong>Age ${a} (≥70)</strong> — per CREST, CEA favored over CAS in this age band (lower peri-procedural stroke).` });
+  }
+  if (a >= 50) {
+    notes.push({ when: ['ich_bp','ich_acrev','ich_surg'],
+      text: `<strong>Age ${a} (≥50)</strong> — Boston Criteria 2.0 applicable for CAA assessment if lobar ICH or hemorrhagic features. Open the Boston calculator if MRI features suggest.` });
+  }
+  if (a >= 80) {
+    notes.push({ when: ['card_af','card_bio'],
+      text: `<strong>Age ${a}</strong> — apixaban 2.5 mg BID if 2 of: age ≥80, weight ≤60 kg, Cr ≥1.5. Bleeding risk rises sharply with age — recheck HAS-BLED, address falls risk.` });
+  }
+  if (a < 60) {
+    notes.push({ when: ['ich_bp','ich_acrev','ich_surg'],
+      text: `<strong>Age ${a}</strong> — for malignant MCA infarct, hemicraniectomy is supported in age &lt;60 (pooled DESTINY/DECIMAL/HAMLET). DESTINY-II extended evidence to age &lt;80 with worse functional ceiling.` });
+  }
+  return notes;
+}
+
+/* ===================================================================
+   MEDICATION-DRIVEN NOTES
+   =================================================================== */
+function medNotes() {
+  const notes = [];
+  const onASA       = !!medState.asa;
+  const onClopi     = !!medState.clopi;
+  const onTica      = !!medState.tica;
+  const onDAPT      = onASA && onClopi;
+  const anyAP       = onASA || onClopi || onTica;
+  const onWarf      = !!medState.warfarin;
+  const onDOAC      = !!medState.doac;
+  const anyAC       = onWarf || onDOAC;
+  const onStatinHi  = !!medState.statin_high;
+  const onStatinMod = !!medState.statin_mod;
+  const anyStatin   = onStatinHi || onStatinMod;
+  const onACE       = !!medState.aceiarb;
+  const onBPOther   = !!medState.bp_other;
+  const anyBP       = onACE || onBPOther;
+  const onPPI       = !!medState.ppi;
+
+  const cardioembolic = ['card_af','card_mech','card_bio','card_thromb','card_endo','card_other'];
+  const noncardioemb_ischemic = ['lvd_carotid_sx','lvd_carotid_asx','lvd_vert','lvd_icad','lvd_aortic',
+                                  'sva','odet_diss','odet_vasc','odet_hyper','odet_sickle',
+                                  'esus_pfo','esus_extended','tia_high','tia_low','crao'];
+  const all_ischemic = [...cardioembolic, ...noncardioemb_ischemic];
+
+  /* --- Anticoagulation --- */
+  if (onWarf) {
+    notes.push({ when: cardioembolic,
+      text: '<strong>Already on warfarin:</strong> check admission INR — subtherapeutic INR is a frequent etiology. If labile or inconsistent, consider DOAC switch (except mechanical valve — warfarin only).' });
+  }
+  if (onDOAC) {
+    notes.push({ when: [...cardioembolic, 'esus_pfo', 'esus_extended'],
+      text: '<strong>Already on DOAC:</strong> confirm last dose &amp; compliance. Breakthrough stroke on therapeutic DOAC → search for alternative etiology (PFO, occult AF, malignancy) or check whether dose was inappropriately reduced for renal/age criteria.' });
+  }
+  if (onWarf && onDOAC) {
+    notes.push({ when: '*',
+      text: '<strong>On warfarin AND DOAC:</strong> overlap is unusual — verify medication reconciliation. Bleeding risk multiplied.' });
+  }
+
+  /* --- Antiplatelet baseline --- */
+  if (!anyAP && !anyAC) {
+    notes.push({ when: noncardioemb_ischemic,
+      text: '<strong>No antithrombotic at baseline:</strong> for non-cardioembolic stroke / high-risk TIA, start ASA + clopidogrel ×21 d → clopidogrel monotherapy (<strong>CHANCE / POINT / INSPIRES</strong>); for NIHSS ≤5, ticagrelor + ASA ×30 d also non-inferior (<strong>THALES</strong>).' });
+  }
+  if (onDAPT) {
+    notes.push({ when: ['tia_high','tia_low','sva','lvd_icad','lvd_carotid_sx','esus_extended'],
+      text: '<strong>Recurrence on DAPT:</strong> re-evaluate mechanism — progressive ICAD? Cardioembolic source missed? Compliance / CYP2C19 hypo-metabolism? Consider switching one agent or adding AC if AF found.' });
+  } else if (onASA && !onClopi && !onTica) {
+    notes.push({ when: ['tia_high','tia_low','sva','lvd_icad','esus_extended','crao'],
+      text: '<strong>On ASA monotherapy:</strong> add clopidogrel 75 mg (after 600 mg load) ×21 d then clopidogrel alone (<strong>CHANCE / POINT</strong>), or up to 72 h after onset (<strong>INSPIRES</strong>).' });
+  } else if (onClopi && !onASA) {
+    notes.push({ when: ['tia_high','tia_low','sva','lvd_icad','esus_extended'],
+      text: '<strong>On clopidogrel monotherapy:</strong> consider DAPT escalation for mild events per CHANCE/POINT. If recurrence on clopidogrel, check CYP2C19 loss-of-function status.' });
+  }
+  if (onTica) {
+    notes.push({ when: ['tia_high','sva','lvd_icad'],
+      text: '<strong>Already on ticagrelor:</strong> recurrence on ticagrelor — confirm indication (prior stroke vs cardiac), re-evaluate mechanism. Avoid stacking with clopidogrel.' });
+  }
+
+  /* --- Statin --- */
+  if (onStatinHi) {
+    notes.push({ when: all_ischemic,
+      text: '<strong>On high-intensity statin already:</strong> check current LDL — goal &lt;70 (<strong>SPARCL</strong>). If above, add ezetimibe ± PCSK9i. Continue current dose.' });
+  } else if (onStatinMod) {
+    notes.push({ when: all_ischemic,
+      text: '<strong>Moderate-intensity statin only:</strong> escalate to high-intensity (atorvastatin 40–80 mg or rosuvastatin 20–40 mg) — <strong>SPARCL</strong> target LDL &lt;70.' });
+  } else if (!anyStatin) {
+    notes.push({ when: all_ischemic,
+      text: '<strong>Not on a statin:</strong> initiate high-intensity statin (atorvastatin 40–80 mg or rosuvastatin 20–40 mg) — <strong>SPARCL</strong> target LDL &lt;70.' });
+  }
+
+  /* --- BP --- */
+  if (!anyBP) {
+    notes.push({ when: ['lvd_carotid_sx','lvd_icad','sva','odet_hyper','tia_high','tia_low','esus_extended','ich_bp'],
+      text: '<strong>Not on antihypertensive:</strong> initiate after acute phase — ACE-I / ARB first-line for ischemic stroke / TIA. Goal &lt;130/80.' });
+  } else if (anyBP && !onACE) {
+    notes.push({ when: ['lvd_carotid_sx','lvd_icad','sva','odet_hyper','tia_high','tia_low','esus_extended'],
+      text: '<strong>On BP medication, no ACE-I/ARB:</strong> consider adding ACE-I or ARB — class-specific benefit for stroke secondary prevention beyond BP lowering alone.' });
+  }
+
+  /* --- PPI + clopidogrel interaction --- */
+  if (onPPI && (onClopi || onDAPT)) {
+    notes.push({ when: '*',
+      text: '<strong>PPI + clopidogrel interaction:</strong> omeprazole / esomeprazole reduce clopidogrel\u2019s active metabolite via CYP2C19 — pantoprazole has the least interaction; consider switching the PPI rather than the antiplatelet.' });
+  }
+
+  return notes;
+}
+
+/* ===================================================================
+   VIEW + STAGE STATE
+   =================================================================== */
+const STAGES = [
+  { id: 'patient',  label: 'Patient',  num: '01' },
+  { id: 'type',     label: 'Type',     num: '02' },
+  { id: 'imaging',  label: 'Imaging',  num: '03' },
+  { id: 'etiology', label: 'Etiology', num: '04' },
+  { id: 'scoring',  label: 'Scoring',  num: '05' },
+  { id: 'plan',     label: 'Plan',     num: '06' },
+];
+
+let view = 'home';                  // 'home' | 'workflow' | 'resources'
+let resourceTab = 'trials';        // 'calculators' | 'trials'
+let currentStageIdx = 0;             // 0..5
+let strokeType = null;               // 'ischemic' | 'tia' | 'ich' | 'sah' | 'cvst' | 'crao'
+let etiologyChain = [];              // ordered node ids walked in etiology stage (not including the type root)
+let currentEtiologyNode = null;      // current node within etiology stage (intermediate, not terminal)
+let terminalNode = null;             // node id of the reached terminal
+let savedScores = {};                // { calcId: { score, interp } } — scores user opted to fill in
+
+/* root-level type → first node in NODES tree */
+const TYPE_TO_NODE = {
+  ischemic: 'toast',
+  tia: 'tia',
+  ich: 'ich',
+  sah: 'sah',
+  cvst: 'cvst',
+  crao: 'crao',
+};
+
+/* Which calculators are relevant per path */
+function relevantCalcs() {
+  const list = new Set();
+  if (strokeType === 'tia') { list.add('abcd2'); list.add('cha2ds2vasc'); list.add('hasbled'); }
+  if (terminalNode === 'card_af' || terminalNode === 'card_bio') {
+    list.add('cha2ds2vasc'); list.add('hasbled');
+  }
+  if (terminalNode === 'esus_pfo' || terminalNode === 'esus_extended') list.add('rope');
+  if (strokeType === 'ich') {
+    list.add('ichscore');
+    if ((ageState !== null && ageState >= 50) || mriState.cmb_lobar || mriState.css) list.add('boston');
+  }
+  if (strokeType === 'sah') list.add('hunthess');
+  if (mriState.cmb_lobar || mriState.css) list.add('boston');
+  return Array.from(list);
+}
+
+/* ===================================================================
+   VIEW NAVIGATION
+   =================================================================== */
+function showView(v) {
+  view = v;
+  document.getElementById('homeView').style.display      = v === 'home'      ? 'block' : 'none';
+  document.getElementById('workflowView').style.display  = v === 'workflow'  ? 'block' : 'none';
+  document.getElementById('resourcesView').style.display = v === 'resources' ? 'block' : 'none';
+  document.getElementById('restartBtn').style.display    = v === 'workflow'  ? 'inline-block' : 'none';
+  if (typeof renderContextPanel === 'function') renderContextPanel();
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
+
+function goHome() {
+  // Reset workflow state
+  currentStageIdx = 0;
+  strokeType = null;
+  etiologyChain = [];
+  currentEtiologyNode = null;
+  terminalNode = null;
+  savedScores = {};
+  // Clear all patient inputs
+  pmhState = {};
+  mriState = {};
+  medState = {};
+  nihssState = null;
+  ageState = null;
+  acuteState = 'none';
+  showView('home');
+}
+
+function startWorkflow() {
+  currentStageIdx = 0;
+  showView('workflow');
+  renderStage();
+}
+
+function goResources() {
+  showView('resources');
+  renderResources();
+}
+
+/* ===================================================================
+   STAGE NAVIGATION
+   =================================================================== */
+function goStage(idx) {
+  if (idx < 0 || idx >= STAGES.length) return;
+  currentStageIdx = idx;
+  renderStage();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function nextStage() {
+  if (currentStageIdx < STAGES.length - 1) goStage(currentStageIdx + 1);
+}
+function prevStage() {
+  if (currentStageIdx > 0) goStage(currentStageIdx - 1);
+}
+
+/* Click handler for progress bar: jump if reachable */
+function jumpStage(idx) {
+  // Allow jumping to any stage user has reached. Patient (0) and Type (1) always reachable.
+  // Imaging (2) requires type. Etiology (3) requires type. Scoring (4) requires terminal reached.
+  // Plan (5) requires terminal.
+  if (idx <= 1) { goStage(idx); return; }
+  if ((idx === 2 || idx === 3) && strokeType) { goStage(idx); return; }
+  if ((idx === 4 || idx === 5) && terminalNode) { goStage(idx); return; }
+  // otherwise no-op
+}
+
+/* ===================================================================
+   PROGRESS BAR
+   =================================================================== */
+function renderProgress() {
+  const inner = document.getElementById('progressInner');
+  inner.innerHTML = STAGES.map((s, i) => {
+    let cls = 'progress-step';
+    const isComplete = i < currentStageIdx;
+    if (i === currentStageIdx) cls += ' current';
+    else if (isComplete) cls += ' complete';
+    const canJump =
+      i <= 1 ||
+      ((i === 2 || i === 3) && strokeType) ||
+      ((i === 4 || i === 5) && terminalNode);
+    if (!canJump && i > currentStageIdx) cls += ' disabled';
+    const onClick = canJump ? `onclick="jumpStage(${i})"` : '';
+    const numDisplay = isComplete ? '✓' : s.num;
+    return `
+      <div class="${cls}" ${onClick}>
+        <span class="progress-step-num">${numDisplay}</span>
+        <span class="progress-step-label">${s.label}</span>
+      </div>`;
+  }).join('');
+}
+
+/* ===================================================================
+   FLAG STRIP (workflow context bar)
+   =================================================================== */
+function renderFlagStripWorkflow() {
+  renderFlagStrip(); // uses the existing implementation
+}
+
+/* ===================================================================
+   STAGE RENDERERS
+   =================================================================== */
+function renderStage() {
+  renderProgress();
+  renderFlagStripWorkflow();
+  renderContextPanel();
+  const stage = STAGES[currentStageIdx];
+  if (stage.id === 'patient')   renderPatientStage();
+  if (stage.id === 'type')      renderTypeStage();
+  if (stage.id === 'imaging')   renderImagingStage();
+  if (stage.id === 'etiology')  renderEtiologyStage();
+  if (stage.id === 'scoring')   renderScoringStage();
+  if (stage.id === 'plan')      renderPlanStage();
+}
+
+/* ---- Render right context panel ---- */
+function renderContextPanel() {
+  const panel = document.getElementById('contextPanel');
+  if (!panel) return;
+  if (view !== 'workflow') { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+
+  const sections = [];
+
+  // Presentation: Age, NIHSS, Hyperacute tx
+  const presBits = [];
+  if (ageState !== null) {
+    presBits.push(`<div class="ctx-item"><span class="ctx-key">Age</span><span class="ctx-val">${ageState}</span></div>`);
+  }
+  if (nihssState !== null) {
+    const band = nihssBand(nihssState);
+    const bandCls = band ? band.key : '';
+    presBits.push(`<div class="ctx-item ctx-nihss ${bandCls}"><span class="ctx-key">NIHSS</span><span class="ctx-val">${nihssState}</span></div>`);
+  }
+  if (acuteState !== 'none') {
+    const label = ACUTE_OPTIONS.find(a => a.id === acuteState).label;
+    presBits.push(`<div class="ctx-item" style="padding:6px 4px;"><span class="ctx-key">Tx</span><span class="ctx-acute">${label}</span></div>`);
+  }
+  if (presBits.length) {
+    sections.push(`<div class="ctx-section">
+      <div class="ctx-section-title">Presentation</div>
+      ${presBits.join('')}
+    </div>`);
+  }
+
+  // Imaging
+  const activeMRI = MRI_FINDINGS.filter(f => mriState[f.id]);
+  if (activeMRI.length) {
+    sections.push(`<div class="ctx-section">
+      <div class="ctx-section-title">Imaging</div>
+      <div class="ctx-chips">${activeMRI.map(f => `<span class="ctx-chip teal">${f.label}</span>`).join('')}</div>
+    </div>`);
+  }
+
+  // Comorbidities
+  const activePMH = PMH.filter(p => pmhState[p.id]);
+  if (activePMH.length) {
+    sections.push(`<div class="ctx-section">
+      <div class="ctx-section-title">Comorbidities</div>
+      <div class="ctx-chips">${activePMH.map(p => `<span class="ctx-chip">${p.label}</span>`).join('')}</div>
+    </div>`);
+  }
+
+  // Medications
+  const activeMeds = MEDS.filter(m => medState[m.id]);
+  if (activeMeds.length) {
+    sections.push(`<div class="ctx-section">
+      <div class="ctx-section-title">Medications</div>
+      <div class="ctx-chips">${activeMeds.map(m => `<span class="ctx-chip slate">${m.label}</span>`).join('')}</div>
+    </div>`);
+  }
+
+  // Saved scores
+  const scoreKeys = Object.keys(savedScores);
+  if (scoreKeys.length) {
+    sections.push(`<div class="ctx-section">
+      <div class="ctx-section-title">Scores</div>
+      ${scoreKeys.map(id => {
+        const c = CALCULATORS.find(x => x.id === id);
+        const r = savedScores[id];
+        if (!c || !r) return '';
+        return `<div class="ctx-score">
+          <div class="ctx-score-name">${c.name}</div>
+          <div class="ctx-score-value">${r.score}${r.max !== '' && r.max !== undefined ? ' / ' + r.max : ''}</div>
+        </div>`;
+      }).join('')}
+    </div>`);
+  }
+
+  panel.innerHTML = `
+    <div class="ctx-label">Patient Context</div>
+    ${sections.length ? sections.join('') : '<div class="ctx-empty">Fill out the patient stage to populate.</div>'}
+  `;
+}
+
+/* ---- Stage 1: Patient ---- */
+function renderPatientStage() {
+  const target = document.getElementById('content');
+  target.innerHTML = `
+    <div class="stage-head">
+      <div class="stage-eyebrow">Stage 01 · Patient</div>
+      <h2 class="stage-title">Patient context</h2>
+      <p class="stage-sub">Layer onto downstream recommendations.</p>
+    </div>
+
+    <div class="patient-top-grid">
+      <div class="form-group">
+        <div class="form-group-title">On presentation</div>
+        <div class="form-row-two">
+          <div class="form-big-input">
+            <label>Age</label>
+            <input type="number" id="ageInput" min="0" max="120" placeholder="yrs" value="${ageState ?? ''}" oninput="setAge(this.value)">
+          </div>
+          <div class="form-big-input">
+            <label>Initial NIHSS</label>
+            <input type="number" id="nihssInput" min="0" max="42" placeholder="0–42" value="${nihssState ?? ''}" oninput="setNihss(this.value)">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group hyperacute-group">
+        <div class="form-group-title">Hyperacute therapy received</div>
+        <div class="form-pill-row form-pill-row-2" id="acuteBox"></div>
+      </div>
+    </div>
+
+    <div class="nihss-band-block">
+      <div class="nihss-band" id="nihssBand">—</div>
+      <div class="nihss-hint" id="nihssHint">Enter NIHSS to tailor recommendations.</div>
+    </div>
+
+    <div class="form-group comorbidities-section">
+      <div class="form-group-title">Comorbidities</div>
+      <div class="form-check-grid pmh-grid" id="pmhBox"></div>
+    </div>
+
+    <div class="form-group home-meds-section">
+      <div class="form-group-title">Home medications</div>
+      <div class="form-check-grid meds-grid" id="medsBox"></div>
+    </div>
+
+    <div class="stage-actions">
+      <button class="btn-clear" onclick="resetAll()">Clear inputs</button>
+      <button class="btn-continue" style="margin-left:auto;" onclick="nextStage()">Continue <span style="font-family:var(--serif);">→</span></button>
+    </div>
+  `;
+  renderNihss();
+  renderAcute();
+  renderPMH();
+  renderMeds();
+}
+
+/* ---- Stage 2: Type ---- */
+function renderTypeStage() {
+  const root = NODES.root;
+  const target = document.getElementById('content');
+  target.innerHTML = `
+    <div class="stage-head">
+      <div class="stage-eyebrow">Stage 02 · Type</div>
+      <h2 class="stage-title">Stroke type</h2>
+      <p class="stage-sub">Pick the primary category. Confirm with NCCT ± CTA / MRI.</p>
+    </div>
+    <div class="options">
+      ${root.options.map((o, i) => `
+        <button class="option" onclick="selectType('${o.id}')">
+          <div class="option-head">
+            <span class="option-num">${String(i+1).padStart(2,'0')}</span>
+            <span class="option-title">${o.title}</span>
+          </div>
+          ${o.desc ? `<div class="option-desc">${o.desc}</div>` : ''}
+        </button>
+      `).join('')}
+    </div>
+    <div class="stage-actions">
+      <button class="btn-back" onclick="prevStage()">← Back</button>
+    </div>
+  `;
+}
+
+function selectType(typeId) {
+  strokeType = typeId;
+  // Reset downstream state since type changed
+  etiologyChain = [];
+  currentEtiologyNode = null;
+  terminalNode = null;
+  savedScores = {};
+  goStage(2); // → imaging
+}
+
+/* ---- Stage 3: Imaging ---- */
+function renderImagingStage() {
+  const target = document.getElementById('content');
+  target.innerHTML = `
+    <div class="stage-head">
+      <div class="stage-eyebrow">Stage 03 · Imaging</div>
+      <h2 class="stage-title">Imaging findings</h2>
+      <p class="stage-sub">Check all that apply.</p>
+    </div>
+
+    <div class="form-group">
+      <div class="form-check-grid" id="mriBox"></div>
+    </div>
+
+    <div class="stage-actions">
+      <button class="btn-back" onclick="prevStage()">← Back</button>
+      <button class="btn-continue" style="margin-left:auto;" onclick="nextStage()">Continue <span style="font-family:var(--serif);">→</span></button>
+    </div>
+  `;
+  renderMRI();
+}
+
+/* ---- Stage 4: Etiology ---- */
+function renderEtiologyStage() {
+  // If the type maps directly to a terminal (CVST, CRAO), skip stage 4 forward
+  const typeNodeId = TYPE_TO_NODE[strokeType];
+  if (!typeNodeId) { return; }
+  const typeNode = NODES[typeNodeId];
+
+  // If we haven't started walking the etiology chain, start at the type node
+  if (!currentEtiologyNode) {
+    currentEtiologyNode = typeNodeId;
+    etiologyChain = [];
+  }
+
+  const node = NODES[currentEtiologyNode];
+
+  // If this node IS a terminal, that means the type itself is terminal (CVST, CRAO) — record and advance
+  if (node.terminal) {
+    terminalNode = currentEtiologyNode;
+    goStage(4); // → scoring
+    return;
+  }
+
+  const target = document.getElementById('content');
+  target.innerHTML = `
+    <div class="stage-head">
+      <div class="stage-eyebrow">Stage 04 · Etiology · ${node.label || ''}</div>
+      <h2 class="stage-title">${node.title}</h2>
+    </div>
+
+    <div class="options">
+      ${node.options.map((o, i) => `
+        <button class="option" onclick="advanceEtiology('${o.next}')">
+          <div class="option-head">
+            <span class="option-num">${String(i+1).padStart(2,'0')}</span>
+            <span class="option-title">${o.title}</span>
+          </div>
+          ${o.desc ? `<div class="option-desc">${o.desc}</div>` : ''}
+        </button>
+      `).join('')}
+    </div>
+
+    <div class="stage-actions">
+      <button class="btn-back" onclick="backEtiology()">← Back</button>
+    </div>
+  `;
+}
+
+function advanceEtiology(nextId) {
+  etiologyChain.push(currentEtiologyNode);
+  currentEtiologyNode = nextId;
+  const nextNode = NODES[nextId];
+  if (nextNode.terminal) {
+    terminalNode = nextId;
+    goStage(4); // → scoring
+  } else {
+    renderStage();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function backEtiology() {
+  if (etiologyChain.length === 0) {
+    // Back from initial etiology node → go to imaging stage
+    currentEtiologyNode = null;
+    goStage(2);
+    return;
+  }
+  currentEtiologyNode = etiologyChain.pop();
+  terminalNode = null;
+  renderStage();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ---- Stage 5: Scoring ---- */
+function renderScoringStage() {
+  const calcs = relevantCalcs();
+  const target = document.getElementById('content');
+
+  const cardsHTML = calcs.length
+    ? `<div class="score-grid">${calcs.map(id => {
+        const c = CALCULATORS.find(x => x.id === id);
+        if (!c) return '';
+        const saved = savedScores[id];
+        return `
+          <button class="score-card" onclick="openCalcInScoring('${id}')">
+            <div class="score-card-eyebrow">${c.eyebrow}</div>
+            <div class="score-card-name">${c.name}</div>
+            <div class="score-card-desc">${c.sub}</div>
+            ${saved ? `<div class="score-saved">Result: ${saved.score}${saved.max !== '' && saved.max !== undefined ? ' / ' + saved.max : ''}</div>` : ''}
+          </button>`;
+      }).join('')}</div>`
+    : `<p style="font-size:13px; color: var(--ink-soft); margin-bottom: 20px;">No routinely indicated scores for this path.</p>`;
+
+  target.innerHTML = `
+    <div class="stage-head">
+      <div class="stage-eyebrow">Stage 05 · Scoring · optional</div>
+      <h2 class="stage-title">Relevant scores</h2>
+      <p class="stage-sub">Tailored to your path. Results carry into the plan.</p>
+    </div>
+
+    ${cardsHTML}
+
+    <div class="stage-actions">
+      <button class="btn-back" onclick="goStage(3)">← Back</button>
+      <button class="btn-skip" onclick="nextStage()">Skip</button>
+      <button class="btn-continue" onclick="nextStage()">Continue to plan <span style="font-family:var(--serif);">→</span></button>
+    </div>
+  `;
+}
+
+/* When user opens a calculator from the scoring stage, save result back when they close */
+function openCalcInScoring(id) {
+  openCalc(id);
+  // monkey-patch: extend renderCalcModal to also save into savedScores when all-answered
+  // we handle this in setCalcAnswer below
+  _scoringContext = id;
+}
+let _scoringContext = null;
+
+/* ---- Stage 6: Plan ---- */
+function renderPlanStage() {
+  if (!terminalNode) {
+    document.getElementById('content').innerHTML = '<p>No plan available — please complete prior stages.</p>';
+    return;
+  }
+  const node = NODES[terminalNode];
+
+  // Combine all auto-notes: PMH + MRI + Age + Meds
+  const filterFor = (arr) => arr.filter(n => n.when === '*' || (Array.isArray(n.when) && n.when.includes(terminalNode)));
+  const pmhFiltered = filterFor(pmhNotes());
+  const mriFiltered = filterFor(mriNotes());
+  const ageFiltered = filterFor(ageNotes());
+  const medFiltered = filterFor(medNotes());
+
+  const renderNote = (n, accent) => `<div class="pmh-note"${accent ? ` style="border-left-color: ${accent};"` : ''}>${n.text}</div>`;
+
+  const trialsHTML = (node.trials && node.trials.length)
+    ? `<div class="trials">
+         <div class="trials-header">Underlying evidence</div>
+         ${node.trials.map(trialCard).join('')}
+       </div>` : '';
+
+  const ischemicTerminals = [
+    'lvd_carotid_sx','lvd_carotid_asx','lvd_vert','lvd_icad','lvd_aortic',
+    'card_af','card_mech','card_bio','card_thromb','card_endo','card_other',
+    'sva','odet_diss','odet_vasc','odet_hyper','odet_sickle',
+    'esus_pfo','esus_extended','tia_high','tia_low','crao'
+  ];
+
+  let acuteBanner = '';
+  if (acuteState !== 'none' && ischemicTerminals.includes(terminalNode)) {
+    const proto = ACUTE_PROTOCOLS[acuteState];
+    const acuteLabel = ACUTE_OPTIONS.find(a => a.id === acuteState).label;
+    acuteBanner = `
+      <details class="acute-banner">
+        <summary>
+          <span class="acute-banner-icon">!</span>
+          <span class="acute-banner-main">
+            <span class="acute-banner-label">Layered on top: ${acuteLabel} given</span>
+            <span class="acute-banner-title">${proto.title}</span>
+          </span>
+          <span class="acute-banner-toggle">
+            <span class="acute-banner-toggle-text-closed">Read protocol</span>
+            <span class="acute-banner-toggle-text-open">Hide</span>
+            <span class="acute-banner-chevron">▼</span>
+          </span>
+        </summary>
+        <ul>${proto.items.map(i => `<li>${i}</li>`).join('')}</ul>
+      </details>`;
+  }
+
+  let nihssNote = '';
+  if (nihssState !== null && (ischemicTerminals.includes(terminalNode) || ['ich_bp','ich_acrev','ich_surg'].includes(terminalNode))) {
+    const band = nihssBand(nihssState);
+    if (band) {
+      nihssNote = `<div class="pmh-note" style="border-left-color: var(--accent);"><strong>NIHSS ${nihssState} · ${band.label.split(' · ')[1]}:</strong> ${band.note}</div>`;
+    }
+  }
+
+  // Saved score notes
+  let scoreNotes = '';
+  Object.keys(savedScores).forEach(id => {
+    const c = CALCULATORS.find(x => x.id === id);
+    const r = savedScores[id];
+    if (c && r) {
+      scoreNotes += `<div class="pmh-note" style="border-left-color: var(--gold);"><strong>${c.name}: ${r.score}${r.max !== '' && r.max !== undefined ? ' / ' + r.max : ''}</strong> · ${r.interp}</div>`;
+    }
+  });
+
+  const allNotes =
+    nihssNote +
+    ageFiltered.map(n => renderNote(n, 'var(--accent)')).join('') +
+    mriFiltered.map(n => renderNote(n, 'var(--teal)')).join('') +
+    medFiltered.map(n => renderNote(n, '#4a5a7a')).join('') +
+    scoreNotes +
+    pmhFiltered.map(n => renderNote(n)).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="stage-head">
+      <div class="stage-eyebrow">Stage 06 · Management plan</div>
+      <h2 class="stage-title">${node.title}</h2>
+    </div>
+
+    ${acuteBanner}
+
+    <div class="verdict">
+      <div class="verdict-eyebrow">${node.verdict.eyebrow} <span class="aha-badge">AHA 2026</span></div>
+      <h2 class="verdict-title">${node.verdict.title}</h2>
+      <p class="verdict-summary">${node.verdict.summary}</p>
+    </div>
+
+    <div class="treatment">
+      <div class="treatment-label">${node.rx.label}</div>
+      <div class="treatment-rx">${node.rx.rx}</div>
+      ${node.rx.detail ? `<div class="treatment-detail">${node.rx.detail}</div>` : ''}
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Inpatient next steps</div>
+        <ul class="checklist">
+          ${node.nextSteps.map(s => `<li>${s}</li>`).join('')}
+        </ul>
+      </div>
+      <div class="card warn">
+        <div class="card-title">Watch out for</div>
+        <ul class="checklist">
+          ${node.watchOut.map(s => `<li>${s}</li>`).join('')}
+        </ul>
+      </div>
+    </div>
+
+    ${allNotes ? `<div class="section-head">Patient-specific factors</div>${allNotes}` : ''}
+
+    ${trialsHTML ? `<div class="section-head">Evidence</div>${trialsHTML}` : ''}
+
+    <div class="stage-actions">
+      <button class="btn-back" onclick="goStage(4)">← Back to scoring</button>
+      <button class="btn-back" onclick="goHome()">Restart workflow</button>
+    </div>
+  `;
+}
+
+/* ===================================================================
+   TRIAL CARD (reused)
+   =================================================================== */
+function trialCard(key) {
+  const t = TRIALS[key];
+  if (!t) return '';
+  const pm = t.pubmed
+    ? `<a class="trial-pubmed" href="${t.pubmed}" target="_blank" rel="noopener">PubMed →</a>`
+    : '';
+  return `
+    <div class="trial">
+      <div class="trial-top">
+        <div class="trial-name">${t.name}</div>
+        <div class="trial-top-right">
+          <div class="trial-year">${t.year}</div>
+          ${pm}
+        </div>
+      </div>
+      <div class="trial-tagline">${t.tagline}</div>
+      <dl class="trial-meta">
+        <dt>Population</dt><dd>${t.population}</dd>
+        <dt>Intervention</dt><dd>${t.intervention}</dd>
+        <dt>Outcome</dt><dd>${t.outcome}</dd>
+      </dl>
+    </div>`;
+}
+
+/* ===================================================================
+   RESOURCES PAGE
+   =================================================================== */
+function setResourceTab(tab) {
+  resourceTab = tab;
+  document.getElementById('tabCalcs').classList.toggle('active', tab === 'calculators');
+  document.getElementById('tabTrials').classList.toggle('active', tab === 'trials');
+  renderResources();
+}
+
+function renderResources() {
+  const body = document.getElementById('resourcesBody');
+  if (resourceTab === 'calculators') {
+    body.innerHTML = `
+      <div class="resource-calc-grid">
+        ${CALCULATORS.map(c => `
+          <button class="score-card" onclick="openCalc('${c.id}')">
+            <div class="score-card-eyebrow">${c.eyebrow}</div>
+            <div class="score-card-name">${c.name}</div>
+            <div class="score-card-desc">${c.sub}</div>
+          </button>
+        `).join('')}
+      </div>
+    `;
+  } else {
+    // Trials list — sorted by year (newer first)
+    const trialsArr = Object.keys(TRIALS).map(k => ({ key: k, ...TRIALS[k] }));
+    trialsArr.sort((a, b) => {
+      const yA = parseInt(String(a.year).slice(-4), 10) || 0;
+      const yB = parseInt(String(b.year).slice(-4), 10) || 0;
+      return yB - yA;
+    });
+    body.innerHTML = `
+      <div class="resource-trial-list">
+        ${trialsArr.map(t => trialCard(t.key)).join('')}
+      </div>
+    `;
+  }
+}
+
+/* ===================================================================
+   CALC MENU (from header)
+   =================================================================== */
+function openCalcMenu() {
+  document.getElementById('calcMenu').innerHTML = `
+    <div class="modal-head">
+      <div>
+        <div class="modal-eyebrow">Quick access</div>
+        <div class="modal-title">Calculators</div>
+        <div class="modal-sub">Open any calculator. Results from the scoring stage are kept in the plan.</div>
+      </div>
+      <button class="modal-close" onclick="closeCalcMenu()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="calc-menu-grid">
+        ${CALCULATORS.map(c => `
+          <button class="calc-btn" onclick="closeCalcMenu(); openCalc('${c.id}')">
+            <span class="calc-name">${c.name}</span>
+            <span class="calc-arrow">→</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  document.getElementById('calcMenuBackdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeCalcMenu() {
+  document.getElementById('calcMenuBackdrop').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+/* ===================================================================
+   PATCH setCalcAnswer to save into savedScores when in scoring context
+   =================================================================== */
+const _origSetCalcAnswer = setCalcAnswer;
+setCalcAnswer = function(qIdx, value) {
+  _origSetCalcAnswer(qIdx, value);
+  // After the modal updates, check if all are answered and we're in scoring context
+  if (activeCalc && _scoringContext && calcAnswers.every(a => a !== null)) {
+    const sum = calcAnswers.reduce((acc, v) => acc + (v || 0), 0);
+    const r = activeCalc.result(sum, calcAnswers);
+    savedScores[activeCalc.id] = { score: r.score, max: r.max, interp: r.interp };
+  }
+};
+
+/* Also: when calc closes, re-render scoring stage to show saved badge */
+const _origCloseCalc = closeCalc;
+closeCalc = function() {
+  _origCloseCalc();
+  _scoringContext = null;
+  if (view === 'workflow' && STAGES[currentStageIdx].id === 'scoring') {
+    renderScoringStage();
+  }
+};
+
+/* ===================================================================
+   INIT
+   =================================================================== */
+showView('home');
+
+</script>
+</body>
+</html>
