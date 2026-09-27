@@ -2152,6 +2152,14 @@
           grid-template-columns: 1fr;
         }
       }
+      /* Imaging findings: a single-column stack so simple checkboxes and multi-step
+   cascades (which need room for a group label + pills) read as one consistent
+   list rather than mismatched grid-cell widths. */
+      .mri-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
       .form-check {
         display: flex;
         align-items: center;
@@ -2206,6 +2214,28 @@
         color: var(--ink-faint);
         font-size: 10.5px;
         margin-left: 3px;
+      }
+
+      /* Section heading above a run of checkbox rows (e.g. "Acute infarct
+   pattern", "↳ Bihemispheric?") — a label only, not a control, so it doesn't
+   compete visually with the checkboxes themselves. */
+      .mri-group-label {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--ink-faint);
+        margin: 6px 2px 0;
+      }
+      /* Indents a follow-up question's checkbox rows under its parent, so the
+   cascade's hierarchy reads clearly while every row keeps identical styling. */
+      .mri-subq {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding-left: 16px;
+        border-left: 2px solid var(--accent);
+        margin-left: 4px;
       }
 
       .stage-actions {
@@ -2650,6 +2680,16 @@
 
       /* ---- POST-HYPERACUTE PROTOCOL CONTENT ---- */
       const ACUTE_PROTOCOLS = {
+        none: {
+          title: "No tPA/EVT — permissive hypertension protocol",
+          items: [
+            "<strong>No thrombolytic/EVT restriction</strong>, so BP is managed permissively rather than tightened: <strong>BP &lt;220/110</strong> × 24h → <strong>&lt;180</strong> × ~24h → <strong>&lt;160</strong> as tolerated thereafter.",
+            "Treat only if BP exceeds these thresholds (or another indication exists — e.g. MI, aortic dissection, severe heart failure, hypertensive encephalopathy) — don't chase a lower number for its own sake.",
+            "<strong>Pressure-dependent exam</strong> (deficit fluctuates with BP) — allow &lt;220/110 for longer than the usual 24h before tightening.",
+            "<strong>Small-vessel disease (lacunar) strokes</strong> — often allowed to run &lt;180 for longer before tightening to &lt;160.",
+            "<strong>ICAD or LAA strokes with impaired autoregulation</strong> (flow-dependent territory) — allow &lt;180 for longer; avoid over-correcting into hypoperfusion.",
+          ],
+        },
         tnk: {
           title: "Post-thrombolysis (tPA / TNK) — first 24 hours",
           items: [
@@ -2778,38 +2818,14 @@
       /* ===================================================================
    MRI / IMAGING FINDINGS
    =================================================================== */
+      // Flat, independent findings — each is just a boolean flag.
       const MRI_FINDINGS = [
         {
           id: "no_correlate",
           label: "No imaging correlates",
           hint: "unremarkable / pending",
         },
-        // acute pattern
-        {
-          id: "acute_single",
-          label: "Single acute infarct",
-          hint: "one DWI lesion",
-        },
-        {
-          id: "acute_multi_same",
-          label: "Multiple acute, same territory",
-          hint: "embolic shower w/in vascular bed",
-        },
-        {
-          id: "acute_multi_terr",
-          label: "Multiple acute, multiple territories",
-          hint: "strong cardioembolic / aortic signal",
-        },
-        // location
-        { id: "cortical", label: "Cortical involvement" },
-        {
-          id: "subcortical_only",
-          label: "Subcortical / lacunar pattern only",
-          hint: "<1.5 cm, deep",
-        },
-        // hemorrhagic
         { id: "ht", label: "Hemorrhagic transformation" },
-        // chronic findings
         { id: "chronic_infarct", label: "Chronic infarct(s) present" },
         {
           id: "wmd",
@@ -2817,15 +2833,9 @@
           hint: "periventricular/deep WMH",
         },
         {
-          id: "cmb_lobar",
-          label: "Microbleeds — strictly lobar",
-          hint: "CAA-suggestive",
-        },
-        { id: "cmb_deep", label: "Microbleeds — deep", hint: "HTN-related" },
-        {
           id: "css",
           label: "Cortical superficial siderosis",
-          hint: "CAA-defining",
+          hint: "CAA-defining · can occur without microbleeds",
         },
       ];
       let mriState = {};
@@ -2833,25 +2843,140 @@
       function renderMRI() {
         const box = document.getElementById("mriBox");
         if (!box) return;
-        box.innerHTML = MRI_FINDINGS.map(
-          (f) => `
+        // Every selectable option — whether an independent boolean flag or one
+        // branch of a single-select cascade — renders as the same checkbox row
+        // (same markup, same font) so nothing reads as a different control type.
+        const check = (label, checked, onclick, hint) => `
     <label class="form-check">
-      <input type="checkbox" data-id="${f.id}" ${mriState[f.id] ? "checked" : ""} onchange="toggleMRI('${f.id}')">
+      <input type="checkbox" ${checked ? "checked" : ""} onchange="${onclick}">
       <span class="box"></span>
-      <span class="label">${f.label}${f.hint ? ` <span class="label-hint">· ${f.hint}</span>` : ""}</span>
+      <span class="label">${label}${hint ? ` <span class="label-hint">· ${hint}</span>` : ""}</span>
     </label>
-  `,
-        ).join("");
+  `;
+        const flatCheck = (f) =>
+          check(f.label, !!mriState[f.id], `toggleMRI('${f.id}')`, f.hint);
+        const groupLabel = (text) =>
+          `<div class="mri-group-label">${text}</div>`;
+        // Wraps a follow-up question's rows with a left rule so the cascade's
+        // hierarchy stays visible, without changing how the rows themselves look.
+        const indented = (html) => `<div class="mri-subq">${html}</div>`;
+
+        let html = "";
+        html += flatCheck(MRI_FINDINGS.find((f) => f.id === "no_correlate"));
+
+        // ---- Cascade 1: acute infarct pattern ----
+        // Single vs multiple -> (if multiple) same vs different territories -> (if different) bihemispheric?
+        html += groupLabel("Acute infarct pattern");
+        html += check(
+          "Single acute infarct",
+          mriState.acute_pattern === "single",
+          "setAcutePattern('single')",
+        );
+        html += check(
+          "Multiple acute infarcts",
+          mriState.acute_pattern === "multi",
+          "setAcutePattern('multi')",
+        );
+        if (mriState.acute_pattern === "multi") {
+          html += indented(
+            groupLabel("↳ Same territory, or different territories?") +
+              check(
+                "Same territory",
+                mriState.acute_territory === "same",
+                "setAcuteTerritory('same')",
+                "embolic shower w/in vascular bed",
+              ) +
+              check(
+                "Different territories",
+                mriState.acute_territory === "diff",
+                "setAcuteTerritory('diff')",
+              ),
+          );
+        }
+        if (
+          mriState.acute_pattern === "multi" &&
+          mriState.acute_territory === "diff"
+        ) {
+          html += indented(
+            groupLabel("↳ Bihemispheric?") +
+              check(
+                "Yes — bihemispheric",
+                mriState.acute_bihemi === "bi",
+                "setAcuteBihemi('bi')",
+                "strong embolic signal — cardioembolic / systemic",
+              ) +
+              check(
+                "No — same hemisphere",
+                mriState.acute_bihemi === "uni",
+                "setAcuteBihemi('uni')",
+                "check ipsilateral LAA / ICAD first",
+              ),
+          );
+        }
+
+        // ---- Cascade 2: lesion location ----
+        html += groupLabel("Lesion location");
+        html += check(
+          "Cortical involvement",
+          mriState.location_pattern === "cortical",
+          "setLocationPattern('cortical')",
+        );
+        html += check(
+          "Subcortical / lacunar pattern only",
+          mriState.location_pattern === "subcortical",
+          "setLocationPattern('subcortical')",
+          "<1.5 cm, deep",
+        );
+
+        // ---- Flat checkboxes: HT, chronic infarct, WMD ----
+        html += MRI_FINDINGS.filter((f) =>
+          ["ht", "chronic_infarct", "wmd"].includes(f.id),
+        )
+          .map(flatCheck)
+          .join("");
+
+        // ---- Cascade 3: microbleeds -> distribution ----
+        html += check(
+          "Microbleeds on GRE/SWI",
+          !!mriState.cmb_present,
+          "toggleMRI('cmb_present')",
+        );
+        if (mriState.cmb_present) {
+          html += indented(
+            groupLabel("↳ Distribution?") +
+              check(
+                "Strictly lobar",
+                mriState.cmb_distribution === "lobar",
+                "setCmbDistribution('lobar')",
+                "CAA-suggestive",
+              ) +
+              check(
+                "Deep",
+                mriState.cmb_distribution === "deep",
+                "setCmbDistribution('deep')",
+                "HTN-related",
+              ) +
+              check(
+                "Mixed (lobar + deep)",
+                mriState.cmb_distribution === "mixed",
+                "setCmbDistribution('mixed')",
+              ),
+          );
+        }
+
+        // ---- Cortical superficial siderosis — independent (can occur without microbleeds) ----
+        html += flatCheck(MRI_FINDINGS.find((f) => f.id === "css"));
+
+        box.innerHTML = html;
       }
+
       function toggleMRI(id) {
         // Special handling: "no_correlate" is mutually exclusive with all others
         if (id === "no_correlate") {
           const turningOn = !mriState[id];
           if (turningOn) {
-            // clear all other MRI findings
-            Object.keys(mriState).forEach((k) => {
-              mriState[k] = false;
-            });
+            // clear all other MRI findings/cascades
+            mriState = {};
             mriState[id] = true;
           } else {
             mriState[id] = false;
@@ -2861,9 +2986,84 @@
           mriState[id] = !mriState[id];
           if (mriState[id] && mriState.no_correlate)
             mriState.no_correlate = false;
+          if (id === "cmb_present" && !mriState[id]) {
+            mriState.cmb_distribution = null;
+          }
         }
         renderMRI();
         _reRender();
+      }
+
+      // ---- Cascade setters: each clears its downstream/dependent answers when it changes ----
+      function setAcutePattern(val) {
+        mriState.acute_pattern = mriState.acute_pattern === val ? null : val;
+        if (mriState.acute_pattern !== "multi") {
+          mriState.acute_territory = null;
+          mriState.acute_bihemi = null;
+        }
+        if (mriState.no_correlate) mriState.no_correlate = false;
+        renderMRI();
+        _reRender();
+      }
+      function setAcuteTerritory(val) {
+        mriState.acute_territory =
+          mriState.acute_territory === val ? null : val;
+        if (mriState.acute_territory !== "diff") {
+          mriState.acute_bihemi = null;
+        }
+        renderMRI();
+        _reRender();
+      }
+      function setAcuteBihemi(val) {
+        mriState.acute_bihemi = mriState.acute_bihemi === val ? null : val;
+        renderMRI();
+        _reRender();
+      }
+      function setLocationPattern(val) {
+        mriState.location_pattern =
+          mriState.location_pattern === val ? null : val;
+        if (mriState.no_correlate) mriState.no_correlate = false;
+        renderMRI();
+        _reRender();
+      }
+      function setCmbDistribution(val) {
+        mriState.cmb_distribution =
+          mriState.cmb_distribution === val ? null : val;
+        renderMRI();
+        _reRender();
+      }
+
+      // Chip labels for everything currently active — flat findings + the three cascades — used
+      // by the flag strip and context panel.
+      function mriActiveLabels() {
+        const labels = [];
+        MRI_FINDINGS.forEach((f) => {
+          if (mriState[f.id]) labels.push(f.label);
+        });
+        if (mriState.acute_pattern === "single") {
+          labels.push("Single acute infarct");
+        } else if (mriState.acute_pattern === "multi") {
+          let l = "Multiple acute infarcts";
+          if (mriState.acute_territory === "same") l += ", same territory";
+          else if (mriState.acute_territory === "diff") {
+            l += ", different territories";
+            if (mriState.acute_bihemi === "bi") l += " (bihemispheric)";
+            else if (mriState.acute_bihemi === "uni")
+              l += " (same hemisphere)";
+          }
+          labels.push(l);
+        }
+        if (mriState.location_pattern === "cortical")
+          labels.push("Cortical involvement");
+        else if (mriState.location_pattern === "subcortical")
+          labels.push("Subcortical / lacunar pattern only");
+        if (mriState.cmb_present) {
+          let l = "Microbleeds";
+          if (mriState.cmb_distribution)
+            l += ` — ${mriState.cmb_distribution}`;
+          labels.push(l);
+        }
+        return labels;
       }
 
       /* ===================================================================
@@ -3571,7 +3771,7 @@
       }
       function renderFlagStrip() {
         const activePMH = PMH.filter((p) => pmhState[p.id]);
-        const activeMRI = MRI_FINDINGS.filter((f) => mriState[f.id]);
+        const activeMRI = mriActiveLabels();
         const activeMeds = MEDS.filter((m) => medState[m.id]);
         const strip = document.getElementById("flagStrip");
         if (!strip) return;
@@ -3607,8 +3807,8 @@
           : "";
         const mriFlags = activeMRI
           .map(
-            (f) =>
-              `<span class="flag" style="background:var(--teal);">${f.label}</span>`,
+            (label) =>
+              `<span class="flag" style="background:var(--teal);">${label}</span>`,
           )
           .join("");
         const medFlags = activeMeds
@@ -4714,7 +4914,7 @@
             {
               id: "ich-bp",
               title: "BP / hyperacute bundle",
-              desc: "INTERACT-3 protocol, target SBP ~140.",
+              desc: "INTERACT-3 protocol; SBP ~150–160 typical, <140 if lobar/CAA.",
               next: "ich_bp",
             },
             {
@@ -4738,20 +4938,20 @@
           terminal: true,
           verdict: {
             eyebrow: "ICH · acute bundle",
-            title: "Target SBP ~140 · normalize glucose, temp · reverse AC",
+            title: "Target SBP ~150–160 (typical) · <140 if CAA/lobar · reverse AC",
             summary:
-              "<strong>INTERACT-3</strong> bundle: SBP <140 within 1 hr, glucose 6.1–7.8 mmol/L, temp <37.5°C, anticoagulant reversal within 1 hr. <strong>ATACH-2</strong> showed pushing SBP <130 doesn't help and harms kidneys. Sweet spot ≈ 140.",
+              "<strong>INTERACT-3</strong> bundle: SBP <140 within 1 hr, glucose 6.1–7.8 mmol/L, temp <37.5°C, anticoagulant reversal within 1 hr. <strong>ATACH-2</strong> showed pushing SBP <130 doesn't help and harms kidneys. In practice: typical (non-lobar / non-CAA) ICH → SBP <strong>&lt;150–160</strong> (tentative — some institutions still target &lt;140 per INTERACT-3). Lobar / CAA-pattern ICH → target <strong>&lt;140</strong>, same as SAH.",
           },
           rx: {
             label: "Treatment",
-            rx: "<em>SBP 130–150</em> (avoid <130) · nicardipine or clevidipine drip · glucose 6.1–7.8 · temp <37.5",
+            rx: "<em>SBP &lt;150–160</em> typical (avoid &lt;130) · <em>SBP &lt;140</em> if lobar/CAA-pattern · nicardipine or clevidipine drip · glucose 6.1–7.8 · temp <37.5",
             detail:
               "Avoid hypotension. Repeat NCHCT at 6–24h or for any neuro change.",
           },
           nextSteps: [
             "NCHCT — measure ICH volume (ABC/2)",
             "CTA — spot sign? underlying lesion (AVM, aneurysm, tumor)?",
-            "BP drip — nicardipine or clevidipine, target SBP ~140",
+            "BP drip — nicardipine or clevidipine, target SBP ~150–160 (typical) or <140 (lobar/CAA-pattern)",
             "Reverse anticoagulants (see AC reversal node)",
             "Neurosurgery consult — EVD if hydrocephalus, evacuate if cerebellar >3 cm",
             "ICU admission · q1h neuro checks",
@@ -4865,11 +5065,11 @@
             eyebrow: "SAH · acute",
             title: "Secure the aneurysm within 24h",
             summary:
-              "<strong>ISAT</strong>: coiling preferred over clipping when both feasible. Pre-securing: keep SBP <140–160. Start <strong>nimodipine 60 mg PO q4h × 21 days</strong> for all aneurysmal SAH (vasospasm prevention).",
+              "<strong>ISAT</strong>: coiling preferred over clipping when both feasible. Pre-securing: keep SBP <140. Start <strong>nimodipine 60 mg PO q4h × 21 days</strong> for all aneurysmal SAH (vasospasm prevention).",
           },
           rx: {
             label: "Treatment",
-            rx: "<em>Nimodipine 60 mg q4h × 21 d</em> · SBP <140–160 pre-securing · <em>endovascular coiling</em> (or clipping) <24h",
+            rx: "<em>Nimodipine 60 mg q4h × 21 d</em> · SBP <140 pre-securing · <em>endovascular coiling</em> (or clipping) <24h",
             detail:
               "Hunt-Hess grade + modified Fisher → prognosis & vasospasm risk.",
           },
@@ -4879,7 +5079,7 @@
             "Neurosurgery / neuro-IR STAT consult",
             "ICU · neuro checks q1h",
             "Nimodipine 60 mg q4h ×21 d (do NOT skip)",
-            "BP control: SBP <140–160 pre-securing; liberalize after",
+            "BP control: SBP <140 pre-securing; liberalize after",
             "Glucose / temp / Na+ control",
             "EVD if hydrocephalus",
             "Daily TCDs from day 3 — surveillance for vasospasm",
@@ -5091,20 +5291,59 @@
    =================================================================== */
       function mriNotes() {
         const notes = [];
-        const isIschemic = (cur) =>
-          ![
-            "ich_bp",
-            "ich_acrev",
-            "ich_surg",
-            "sah_acute",
-            "sah_vaso",
-            "cvst",
-          ].includes(cur);
-        const isICH = (cur) =>
-          ["ich_bp", "ich_acrev", "ich_surg"].includes(cur);
+        const acuteMulti = mriState.acute_pattern === "multi";
+        const cmbLobar =
+          mriState.cmb_present &&
+          (mriState.cmb_distribution === "lobar" ||
+            mriState.cmb_distribution === "mixed");
+        const cmbDeep =
+          mriState.cmb_present &&
+          (mriState.cmb_distribution === "deep" ||
+            mriState.cmb_distribution === "mixed");
 
-        // Multiple territories — strong embolic signal
-        if (mriState.acute_multi_terr) {
+        // Multifocal AIS flowchart: bihemispheric? no -> check LAA/ICAD first. yes -> embolic (cardiac vs systemic).
+        if (
+          acuteMulti &&
+          mriState.acute_territory === "diff" &&
+          !mriState.acute_bihemi
+        ) {
+          notes.push({
+            when: [
+              "sva",
+              "lvd_carotid_sx",
+              "lvd_carotid_asx",
+              "lvd_icad",
+              "lvd_vert",
+              "esus_extended",
+              "tia_high",
+              "tia_low",
+            ],
+            text: '<strong>MRI: multiple acute infarcts, different territories</strong> — answer "Bihemispheric?" above to route the differential.',
+          });
+        }
+        if (
+          acuteMulti &&
+          mriState.acute_territory === "diff" &&
+          mriState.acute_bihemi === "uni"
+        ) {
+          notes.push({
+            when: [
+              "sva",
+              "lvd_carotid_sx",
+              "lvd_carotid_asx",
+              "lvd_icad",
+              "lvd_vert",
+              "tia_high",
+              "tia_low",
+            ],
+            text: "<strong>MRI: multiple acute infarcts, different territories but same hemisphere</strong> — not bihemispheric, so look for a single proximal culprit lesion before defaulting to a cardioembolic workup: ipsilateral <strong>large-artery atherosclerosis (LAA)</strong> (e.g. carotid) or <strong>intracranial atherosclerotic disease (ICAD)</strong> showering distally is often the etiology. Image the ipsilateral carotid/intracranial vessels carefully.",
+          });
+        }
+        if (
+          acuteMulti &&
+          mriState.acute_territory === "diff" &&
+          mriState.acute_bihemi === "bi"
+        ) {
           notes.push({
             when: [
               "sva",
@@ -5114,18 +5353,18 @@
               "tia_high",
               "tia_low",
             ],
-            text: "<strong>MRI: multiple acute infarcts in multiple territories</strong> — strongly favors a proximal embolic source (cardioembolic, aortic arch, or hypercoagulable). If etiology unclear, lower threshold for TEE, bubble study, extended cardiac monitoring (loop), and malignancy/hypercoag workup.",
+            text: "<strong>MRI: multiple acute infarcts, bihemispheric</strong> — a single focal stenosis can't explain bilateral hemispheres, so this strongly favors a proximal embolic source: <strong>cardioembolic</strong> (AF, valve, LV thrombus) vs. <strong>systemic/aortic arch</strong> vs. hypercoagulable state. Lower threshold for TEE, bubble study, extended cardiac monitoring (loop), and malignancy/hypercoag workup.",
           });
         }
         // Multiple same territory — embolic shower or LVO with distal fragments
-        if (mriState.acute_multi_same) {
+        if (acuteMulti && mriState.acute_territory === "same") {
           notes.push({
             when: ["sva", "lvd_carotid_sx", "lvd_carotid_asx"],
             text: "<strong>MRI: multiple acute infarcts in one territory</strong> — suggests artery-to-artery embolic shower from proximal source. Image the parent vessel carefully; consider plaque imaging or HR-VWI.",
           });
         }
         // Cortical involvement contradicts lacunar
-        if (mriState.cortical) {
+        if (mriState.location_pattern === "cortical") {
           notes.push({
             when: ["sva"],
             text: "<strong>Cortical involvement on MRI</strong> is incompatible with a pure lacunar etiology — re-examine for embolic source (cardioembolic, large-artery, ESUS).",
@@ -5153,32 +5392,32 @@
             text: "<strong>Chronic infarcts / WM disease burden</strong> on MRI — high recurrent event risk. Intensify secondary prevention (LDL <55 for very high risk per AHA 2026), aggressive BP <130/80, vascular cognitive impairment counseling.",
           });
         }
-        // Lobar microbleeds — CAA suggestive
-        if (mriState.cmb_lobar) {
+        // Lobar (or mixed) microbleeds — CAA suggestive
+        if (cmbLobar) {
           notes.push({
             when: "*",
-            text: "<strong>Strictly lobar microbleeds</strong> — suggestive of cerebral amyloid angiopathy (run Boston Criteria 2.0 calculator). Implication: substantially elevated ICH risk on antithrombotic / AC. Document risk-benefit explicitly; favor antiplatelet over AC where reasonable; avoid combining antiplatelets.",
+            text: "<strong>Lobar microbleeds</strong> — suggestive of cerebral amyloid angiopathy (run Boston Criteria 2.0 calculator); a mixed lobar+deep pattern lowers but doesn't exclude CAA probability. Implication: substantially elevated ICH risk on antithrombotic / AC. Document risk-benefit explicitly; favor antiplatelet over AC where reasonable; avoid combining antiplatelets.",
           });
         }
         // Cortical superficial siderosis — CAA-defining
         if (mriState.css) {
           notes.push({
             when: "*",
-            text: "<strong>Cortical superficial siderosis</strong> on GRE/SWI is a CAA-defining finding (Boston v2). Disseminated siderosis carries the highest recurrent ICH risk in CAA. Strong bias against anticoagulation and even antiplatelet for primary prevention.",
+            text: "<strong>Cortical superficial siderosis</strong> on GRE/SWI is a CAA-defining finding (Boston v2), including when it occurs without microbleeds. Disseminated siderosis carries the highest recurrent ICH risk in CAA. Strong bias against anticoagulation and even antiplatelet for primary prevention.",
           });
         }
-        // Deep microbleeds — hypertensive small vessel disease
-        if (mriState.cmb_deep) {
+        // Deep (or mixed) microbleeds — hypertensive small vessel disease
+        if (cmbDeep) {
           notes.push({
             when: ["sva", "lvd_icad", "ich_bp", "ich_acrev", "ich_surg"],
             text: "<strong>Deep microbleeds</strong> (basal ganglia / thalamus / brainstem / cerebellum) — hypertensive arteriolopathy. BP control is the dominant intervention; modifiable factor.",
           });
         }
-        // ICH + lobar microbleeds → high CAA suspicion
-        if (mriState.cmb_lobar && isICH) {
+        // ICH + lobar/mixed microbleeds → high CAA suspicion
+        if (cmbLobar) {
           notes.push({
             when: ["ich_bp", "ich_acrev", "ich_surg"],
-            text: "<strong>Lobar ICH + lobar microbleeds</strong> → high suspicion for CAA. Restarting any antithrombotic carries substantial recurrence risk. RESTART data are limited in CAA-pattern bleeds; weigh individual indication carefully.",
+            text: "<strong>Lobar ICH + lobar microbleeds</strong> → high suspicion for CAA. Tighten BP target to <strong>SBP &lt;140</strong> (same as SAH) rather than the typical &lt;150–160 ICH goal. Restarting any antithrombotic carries substantial recurrence risk. RESTART data are limited in CAA-pattern bleeds; weigh individual indication carefully.",
           });
         }
         return notes;
@@ -5440,6 +5679,10 @@
       /* Which calculators are relevant per path */
       function relevantCalcs() {
         const list = new Set();
+        const cmbLobarOrMixed =
+          mriState.cmb_present &&
+          (mriState.cmb_distribution === "lobar" ||
+            mriState.cmb_distribution === "mixed");
         if (strokeType === "tia") {
           list.add("abcd2");
           list.add("cha2ds2vasc");
@@ -5455,13 +5698,13 @@
           list.add("ichscore");
           if (
             (ageState !== null && ageState >= 50) ||
-            mriState.cmb_lobar ||
+            cmbLobarOrMixed ||
             mriState.css
           )
             list.add("boston");
         }
         if (strokeType === "sah") list.add("hunthess");
-        if (mriState.cmb_lobar || mriState.css) list.add("boston");
+        if (cmbLobarOrMixed || mriState.css) list.add("boston");
         return Array.from(list);
       }
 
@@ -5636,11 +5879,11 @@
         }
 
         // Imaging
-        const activeMRI = MRI_FINDINGS.filter((f) => mriState[f.id]);
+        const activeMRI = mriActiveLabels();
         if (activeMRI.length) {
           sections.push(`<div class="ctx-section">
       <div class="ctx-section-title">Imaging</div>
-      <div class="ctx-chips">${activeMRI.map((f) => `<span class="ctx-chip teal">${f.label}</span>`).join("")}</div>
+      <div class="ctx-chips">${activeMRI.map((label) => `<span class="ctx-chip teal">${label}</span>`).join("")}</div>
     </div>`);
         }
 
@@ -5796,7 +6039,7 @@
     </div>
 
     <div class="form-group">
-      <div class="form-check-grid" id="mriBox"></div>
+      <div class="mri-list" id="mriBox"></div>
     </div>
 
     <div class="stage-actions">
@@ -5991,17 +6234,21 @@
         ];
 
         let acuteBanner = "";
-        if (acuteState !== "none" && ischemicTerminals.includes(terminalNode)) {
+        if (ischemicTerminals.includes(terminalNode) && ACUTE_PROTOCOLS[acuteState]) {
           const proto = ACUTE_PROTOCOLS[acuteState];
           const acuteLabel = ACUTE_OPTIONS.find(
             (a) => a.id === acuteState,
           ).label;
+          const bannerLabel =
+            acuteState === "none"
+              ? "No hyperacute therapy given"
+              : `Layered on top: ${acuteLabel} given`;
           acuteBanner = `
       <details class="acute-banner">
         <summary>
           <span class="acute-banner-icon">!</span>
           <span class="acute-banner-main">
-            <span class="acute-banner-label">Layered on top: ${acuteLabel} given</span>
+            <span class="acute-banner-label">${bannerLabel}</span>
             <span class="acute-banner-title">${proto.title}</span>
           </span>
           <span class="acute-banner-toggle">
