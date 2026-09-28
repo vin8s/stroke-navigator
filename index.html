@@ -2030,6 +2030,67 @@
         line-height: 1.5;
       }
 
+      /* TNK vs EVT reference page: mechanism paragraph reads at full column width
+   (unlike .stage-sub, sized for a short one-line stage subtitle) and the
+   window is its own labeled row rather than run into the same sentence. */
+      .tnkevt-intro {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.55;
+        margin-bottom: 24px;
+      }
+      .tnkevt-desc {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.55;
+        margin-bottom: 12px;
+      }
+      .tnkevt-window {
+        margin-bottom: 20px;
+      }
+
+      /* Tabbed card: one modality's full reference (mechanism, window,
+   indications/contraindications, evidence) shown at a time inside a single
+   lighter-background card, switched via the tabs across its top. */
+      .tnkevt-card {
+        background: var(--bg-elev);
+        border: 1px solid var(--rule);
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 24px;
+      }
+      .tnkevt-tabs {
+        display: flex;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--rule);
+      }
+      .tnkevt-tab {
+        flex: 1;
+        padding: 16px 18px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        font-family: var(--mono);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--ink-faint);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        margin-bottom: -1px;
+      }
+      .tnkevt-tab:hover {
+        color: var(--ink-soft);
+      }
+      .tnkevt-tab.active {
+        color: var(--ink);
+        background: var(--bg-elev);
+        border-bottom-color: var(--accent);
+      }
+      .tnkevt-tab-body {
+        padding: 22px 24px 26px;
+      }
+
       .form-group {
         margin-bottom: 20px;
       }
@@ -2042,13 +2103,37 @@
         margin-bottom: 10px;
         display: flex;
         align-items: center;
-        gap: 10px;
+        flex-wrap: wrap;
+        gap: 6px 10px;
       }
       .form-group-title::before {
         content: "";
         width: 12px;
         height: 1px;
         background: var(--accent);
+      }
+      .form-group-title .info-link {
+        margin-left: auto;
+      }
+
+      /* Small clickable reference/calculator links tucked next to a field or
+   section title — same family as .form-group-title but interactive. */
+      .info-link {
+        font-family: var(--mono);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--accent);
+        cursor: pointer;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .info-link:hover {
+        text-decoration: underline;
+      }
+      .info-link-small {
+        align-self: flex-end;
+        margin-top: 2px;
       }
 
       .form-row-two {
@@ -2444,6 +2529,14 @@
           <div class="brand-tag">Inpatient · TOAST · AHA 2026</div>
         </div>
         <nav class="header-nav" id="headerNav">
+          <button
+            class="nav-btn"
+            onclick="showView('workflow')"
+            id="backToWorkflowBtn"
+            style="display: none"
+          >
+            <span class="nav-btn-label">← Back to workflow</span>
+          </button>
           <button class="nav-btn" onclick="goResources()">
             <span class="nav-btn-label">Resources</span>
           </button>
@@ -2608,6 +2701,13 @@
             onclick="setResourceTab('calculators')"
           >
             Calculators
+          </button>
+          <button
+            class="resource-tab"
+            id="tabTnkEvt"
+            onclick="setResourceTab('tnkevt')"
+          >
+            TNK vs EVT
           </button>
         </div>
 
@@ -2794,6 +2894,22 @@
           hintEl.textContent =
             "Enter NIHSS to tailor treatment recommendations.";
         }
+      }
+
+      // Opened via the "Calculate →" link next to the NIHSS field — walks the
+      // 15-item exam and, on completion, writes the total back into nihssState
+      // and the visible input (see applyNihssCalc / the calc-modal patches below).
+      let _nihssCalcContext = false;
+      function openNihssCalc() {
+        openCalc("nihss");
+        _nihssCalcContext = true;
+      }
+      function applyNihssCalc() {
+        const sum = calcAnswers.reduce((acc, v) => acc + (v || 0), 0);
+        setNihss(sum);
+        const input = document.getElementById("nihssInput");
+        if (input) input.value = sum;
+        closeCalc();
       }
 
       /* ===================================================================
@@ -3071,6 +3187,158 @@
    Each: id, name, eyebrow, sub, items[], result(answers) -> {score, interp}
    =================================================================== */
       const CALCULATORS = [
+        /* ---------- NIHSS ---------- */
+        {
+          id: "nihss",
+          name: "NIHSS",
+          eyebrow: "Acute stroke severity",
+          sub: "15-item NIH Stroke Scale. The total drives tPA/EVT eligibility windows and the trial-eligibility notes used throughout this app.",
+          items: [
+            {
+              label: "1a. Level of consciousness",
+              options: [
+                ["Alert", 0],
+                ["Not alert, arousable by minor stimulation", 1],
+                ["Not alert, requires repeated stimulation", 2],
+                ["Unresponsive, or reflex motor/autonomic only", 3],
+              ],
+            },
+            {
+              label: "1b. LOC questions (month, age)",
+              options: [
+                ["Both correct", 0],
+                ["One correct", 1],
+                ["Neither correct", 2],
+              ],
+            },
+            {
+              label: "1c. LOC commands (open/close eyes, grip/release hand)",
+              options: [
+                ["Both correct", 0],
+                ["One correct", 1],
+                ["Neither correct", 2],
+              ],
+            },
+            {
+              label: "2. Best gaze",
+              options: [
+                ["Normal", 0],
+                ["Partial gaze palsy", 1],
+                ["Forced deviation", 2],
+              ],
+            },
+            {
+              label: "3. Visual fields",
+              options: [
+                ["No visual loss", 0],
+                ["Partial hemianopia", 1],
+                ["Complete hemianopia", 2],
+                ["Bilateral hemianopia (blind)", 3],
+              ],
+            },
+            {
+              label: "4. Facial palsy",
+              options: [
+                ["Normal", 0],
+                ["Minor paralysis (flattened nasolabial fold)", 1],
+                ["Partial paralysis (lower face)", 2],
+                ["Complete paralysis (upper + lower face)", 3],
+              ],
+            },
+            {
+              label: "5a. Motor arm — left",
+              options: [
+                ["No drift", 0],
+                ["Drift before 10 sec", 1],
+                ["Some effort against gravity", 2],
+                ["No effort against gravity", 3],
+                ["No movement", 4],
+              ],
+            },
+            {
+              label: "5b. Motor arm — right",
+              options: [
+                ["No drift", 0],
+                ["Drift before 10 sec", 1],
+                ["Some effort against gravity", 2],
+                ["No effort against gravity", 3],
+                ["No movement", 4],
+              ],
+            },
+            {
+              label: "6a. Motor leg — left",
+              options: [
+                ["No drift", 0],
+                ["Drift before 5 sec", 1],
+                ["Some effort against gravity", 2],
+                ["No effort against gravity", 3],
+                ["No movement", 4],
+              ],
+            },
+            {
+              label: "6b. Motor leg — right",
+              options: [
+                ["No drift", 0],
+                ["Drift before 5 sec", 1],
+                ["Some effort against gravity", 2],
+                ["No effort against gravity", 3],
+                ["No movement", 4],
+              ],
+            },
+            {
+              label: "7. Limb ataxia",
+              options: [
+                ["Absent", 0],
+                ["Present in one limb", 1],
+                ["Present in two limbs", 2],
+              ],
+            },
+            {
+              label: "8. Sensory",
+              options: [
+                ["Normal", 0],
+                ["Mild–moderate loss", 1],
+                ["Severe–total loss", 2],
+              ],
+            },
+            {
+              label: "9. Best language (aphasia)",
+              options: [
+                ["No aphasia", 0],
+                ["Mild–moderate aphasia", 1],
+                ["Severe aphasia", 2],
+                ["Mute / global aphasia", 3],
+              ],
+            },
+            {
+              label: "10. Dysarthria",
+              options: [
+                ["Normal", 0],
+                ["Mild–moderate", 1],
+                ["Severe / unintelligible or mute", 2],
+              ],
+            },
+            {
+              label: "11. Extinction / inattention (neglect)",
+              options: [
+                ["No abnormality", 0],
+                ["Mild (one sensory modality)", 1],
+                ["Severe (more than one modality)", 2],
+              ],
+            },
+          ],
+          result: (s) => {
+            const band = nihssBand(s);
+            return {
+              score: s,
+              max: 42,
+              interp: band
+                ? `<strong>${band.label}</strong> — ${band.note}`
+                : "",
+            };
+          },
+        },
+
         /* ---------- ABCD² ---------- */
         {
           id: "abcd2",
@@ -3617,10 +3885,15 @@
         let resultHTML = "";
         if (allAnswered) {
           const r = activeCalc.result(sum, calcAnswers);
-          // Only show "Continue" button when we're in the scoring workflow context
-          const continueBtn = _scoringContext
-            ? `<button class="calc-continue-btn" onclick="closeCalc()">Continue <span style="font-family:var(--serif); margin-left:6px;">→</span></button>`
-            : "";
+          // Only show a completion button when opened from a context that does
+          // something with the result: the scoring stage (saves the score) or
+          // the NIHSS field (writes the total back into it).
+          let continueBtn = "";
+          if (_scoringContext) {
+            continueBtn = `<button class="calc-continue-btn" onclick="closeCalc()">Continue <span style="font-family:var(--serif); margin-left:6px;">→</span></button>`;
+          } else if (_nihssCalcContext) {
+            continueBtn = `<button class="calc-continue-btn" onclick="applyNihssCalc()">Use this score <span style="font-family:var(--serif); margin-left:6px;">→</span></button>`;
+          }
           resultHTML = `
       <div class="calc-result">
         <div class="calc-result-label">Result</div>
@@ -5658,7 +5931,8 @@
       ];
 
       let view = "home"; // 'home' | 'workflow' | 'resources'
-      let resourceTab = "trials"; // 'calculators' | 'trials'
+      let workflowStarted = false; // true once a workflow is in progress — drives the header's "Back to workflow" link
+      let resourceTab = "trials"; // 'calculators' | 'trials' | 'tnkevt'
       let currentStageIdx = 0; // 0..5
       let strokeType = null; // 'ischemic' | 'tia' | 'ich' | 'sah' | 'cvst' | 'crao'
       let etiologyChain = []; // ordered node ids walked in etiology stage (not including the type root)
@@ -5721,6 +5995,8 @@
           v === "resources" ? "block" : "none";
         document.getElementById("restartBtn").style.display =
           v === "workflow" ? "inline-block" : "none";
+        document.getElementById("backToWorkflowBtn").style.display =
+          v !== "workflow" && workflowStarted ? "inline-block" : "none";
         if (typeof renderContextPanel === "function") renderContextPanel();
         window.scrollTo({ top: 0, behavior: "auto" });
       }
@@ -5740,11 +6016,13 @@
         nihssState = null;
         ageState = null;
         acuteState = "none";
+        workflowStarted = false;
         showView("home");
       }
 
       function startWorkflow() {
         currentStageIdx = 0;
+        workflowStarted = true;
         showView("workflow");
         renderStage();
       }
@@ -5752,6 +6030,16 @@
       function goResources() {
         showView("resources");
         renderResources();
+      }
+
+      // Opened via the "TNK vs EVT: indications →" link next to "Hyperacute
+      // therapy received" — jumps straight to that Resources tab. Since
+      // goResources() doesn't touch workflow state, the "Back to workflow"
+      // header link (shown whenever workflowStarted) returns exactly where
+      // the user left off in the patient stage.
+      function openTnkEvtInfo() {
+        showView("resources");
+        setResourceTab("tnkevt");
       }
 
       /* ===================================================================
@@ -5951,12 +6239,13 @@
           <div class="form-big-input">
             <label>Initial NIHSS</label>
             <input type="number" id="nihssInput" min="0" max="42" placeholder="0–42" value="${nihssState ?? ""}" oninput="setNihss(this.value)">
+            <a class="info-link info-link-small" onclick="openNihssCalc()">Calculate →</a>
           </div>
         </div>
       </div>
 
       <div class="form-group hyperacute-group">
-        <div class="form-group-title">Hyperacute therapy received</div>
+        <div class="form-group-title">Hyperacute therapy received <a class="info-link" onclick="openTnkEvtInfo()">TNK vs EVT: indications →</a></div>
         <div class="form-pill-row form-pill-row-2" id="acuteBox"></div>
       </div>
     </div>
@@ -6375,6 +6664,9 @@
         document
           .getElementById("tabTrials")
           .classList.toggle("active", tab === "trials");
+        document
+          .getElementById("tabTnkEvt")
+          .classList.toggle("active", tab === "tnkevt");
         renderResources();
       }
 
@@ -6394,6 +6686,8 @@
         ).join("")}
       </div>
     `;
+        } else if (resourceTab === "tnkevt") {
+          body.innerHTML = renderTnkEvtContent();
         } else {
           // Trials list — sorted by year (newer first)
           const trialsArr = Object.keys(TRIALS).map((k) => ({
@@ -6411,6 +6705,118 @@
       </div>
     `;
         }
+      }
+
+      /* ===================================================================
+   TNK/tPA VS EVT — REFERENCE PAGE (tabbed card)
+   =================================================================== */
+      const TNKEVT_MODALITIES = {
+        tnk: {
+          name: "IV Thrombolysis",
+          tag: "tPA / TNK",
+          mechanism:
+            "Recombinant tissue plasminogen activator (alteplase) or tenecteplase — systemic lytic that activates plasminogen to dissolve the fibrin clot. TNK's single bolus (vs. alteplase's bolus + 1h infusion) is increasingly preferred, especially pre-EVT transfer (EXTEND-IA TNK, AcT — non-inferior to alteplase).",
+          window: "≤4.5 h from last known well (<strong>ECASS-3</strong>).",
+          indications: [
+            "Clinical diagnosis of ischemic stroke causing a measurable, disabling neurologic deficit",
+            "Onset / last known well within 4.5 h",
+            "No hemorrhage or extensive early ischemic change on NCCT/MRI",
+            "No firm upper age limit — treat on deficit and imaging, not age alone",
+          ],
+          absoluteContra: [
+            "Any prior intracranial hemorrhage",
+            "Ischemic stroke or severe head trauma within 3 months",
+            "Intracranial / intraspinal surgery within 3 months",
+            "Known intracranial neoplasm, AVM, or large aneurysm",
+            "Active internal bleeding",
+            "Suspected or confirmed aortic dissection",
+            "Persistent BP ≥185/110 despite treatment",
+            "Platelets &lt;100,000; INR &gt;1.7; elevated aPTT; or therapeutic DOAC/heparin within 48 h without confirmed normal labs or reversal",
+            "NCCT showing multilobar infarction (hypodensity &gt;1/3 cerebral hemisphere)",
+          ],
+          relativeContra: [
+            "Minor or rapidly improving symptoms, if not disabling",
+            "Seizure at onset with postictal residual deficit",
+            "Major surgery or serious trauma within 14 days",
+            "GI or urinary tract hemorrhage within 21 days",
+            "MI within 3 months",
+            "Pregnancy — individualize risk/benefit",
+          ],
+          trials: ["ECASS3"],
+        },
+        evt: {
+          name: "Mechanical Thrombectomy",
+          tag: "EVT",
+          mechanism:
+            "Endovascular stent-retriever or aspiration catheter mechanically removes clot from a large-vessel occlusion (LVO). Can be combined with IV thrombolysis (\"bridging\") — don't withhold tPA solely because EVT is planned unless tPA itself is contraindicated.",
+          window:
+            "0–6 h from LKW (<strong>MR CLEAN</strong>) standard; extended to 6–24 h (<strong>DAWN</strong>) with favorable imaging (clinical–core mismatch).",
+          indications: [
+            "Confirmed LVO on CTA/MRA: ICA, M1 (± select distal/M2), or basilar artery",
+            "Pre-stroke mRS 0–1 (individualize if higher baseline disability)",
+            "NIHSS ≥6 typical — low-NIHSS LVO increasingly treated case-by-case",
+            "ASPECTS ≥6 (0–6 h window), OR favorable clinical–core mismatch on CTP or MRI for the 6–24 h window (DAWN criteria)",
+            "Groin puncture achievable within the eligible window",
+          ],
+          absoluteContra: [
+            "Large established core infarct with no salvageable penumbra (low ASPECTS without perfusion mismatch)",
+            "Vessel anatomy precluding safe catheter access",
+          ],
+          relativeContra: [
+            "Pre-existing severe disability (mRS ≥3) — individualize",
+            "Limited life expectancy from comorbidity — goals-of-care discussion first",
+            "Severe coagulopathy complicating safe arterial access",
+          ],
+          trials: ["MRCLEAN", "DAWN"],
+        },
+      };
+      let tnkEvtModality = "tnk";
+      function setTnkEvtModality(id) {
+        tnkEvtModality = id;
+        renderResources();
+      }
+
+      function renderTnkEvtContent() {
+        const m = TNKEVT_MODALITIES[tnkEvtModality];
+        const tabsHTML = Object.keys(TNKEVT_MODALITIES)
+          .map((id) => {
+            const d = TNKEVT_MODALITIES[id];
+            return `<button class="tnkevt-tab ${tnkEvtModality === id ? "active" : ""}" onclick="setTnkEvtModality('${id}')">${d.name}</button>`;
+          })
+          .join("");
+
+        return `
+      <p class="tnkevt-intro">tPA/TNK and EVT are distinct modalities — one pharmacologic, one mechanical — that are often complementary rather than competing. Pick a modality below for its mechanism, window, and indications/contraindications.</p>
+      <div class="tnkevt-card">
+        <div class="tnkevt-tabs">${tabsHTML}</div>
+        <div class="tnkevt-tab-body">
+          <span class="aha-badge">${m.tag}</span>
+          <p class="tnkevt-desc">${m.mechanism}</p>
+          <dl class="trial-meta tnkevt-window">
+            <dt>Window</dt><dd>${m.window}</dd>
+          </dl>
+          <div class="grid-2">
+            <div class="card">
+              <div class="card-title">Indications</div>
+              <ul class="checklist">
+                ${m.indications.map((s) => `<li>${s}</li>`).join("")}
+              </ul>
+            </div>
+            <div class="card warn">
+              <div class="card-title">Contraindications</div>
+              <ul class="checklist">
+                ${m.absoluteContra.map((s) => `<li><strong>Absolute:</strong> ${s}</li>`).join("")}
+                ${m.relativeContra.map((s) => `<li><strong>Relative:</strong> ${s}</li>`).join("")}
+              </ul>
+            </div>
+          </div>
+          <div class="section-head">Underlying evidence</div>
+          <div class="trials">
+            ${m.trials.map((key) => trialCard(key)).join("")}
+          </div>
+        </div>
+      </div>
+    `;
       }
 
       /* ===================================================================
@@ -6474,6 +6880,7 @@
       closeCalc = function () {
         _origCloseCalc();
         _scoringContext = null;
+        _nihssCalcContext = false;
         if (view === "workflow" && STAGES[currentStageIdx].id === "scoring") {
           renderScoringStage();
         }
